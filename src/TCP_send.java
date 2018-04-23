@@ -20,16 +20,23 @@ public class TCP_send {
     }
 
     public void send(TCP_segm segment) {
+
         boolean running = true;
+
+        DatagramSocket socket = null;
+
+        try {
+            System.out.println("src prt: " + src_port);
+            socket = new DatagramSocket(this.src_port);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println(segment.toString());
+
         while(running) {
             if (flag == 'D') {
                 //send DATA
-                DatagramSocket socket = null;
-                try {
-                    socket = new DatagramSocket(this.src_port);
-                } catch (SocketException e) {
-                    e.printStackTrace();
-                }
                 DatagramPacket packet = new DatagramPacket(segment.serialize(), segment.totalLength, this.remote_IP, this.remote_port);
                 try {
                     socket.send(packet);

@@ -48,6 +48,13 @@ public class TCPend {
             }
         }
 
+        System.out.println("-p: " + port);
+        System.out.println("-s: " + remote_IP);
+        System.out.println("-a: " + remote_port);
+        System.out.println("-f: " + file_name);
+        System.out.println("-m: " + mtu);
+        System.out.println("-c: " + sws);
+
         int slidingWindow = 0;
 
         //for Sender

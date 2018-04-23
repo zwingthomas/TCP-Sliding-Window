@@ -26,13 +26,24 @@ public class TCP_recv {
         }
         byte[] buf = new byte[this.mtu];
         boolean running = true;
+        TCP_segm received = null;
+        BufferedWriter writer = null;
+        try {
+            writer = new BufferedWriter(new FileWriter("received.txt"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         while(running) {
             try {
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
-                String received = new String(packet.getData(), 0, packet.getLength());
-                BufferedWriter writer = new BufferedWriter(new FileWriter("received.txt"));
-                writer.write(received);
+                TCP_segm s = new TCP_segm(0, 0, 0, 0, (short) 0, null, 'D');
+                s = s.deserialize(packet.getData());
+                System.out.println(s.toString());
+                byte[] recvData = s.getData();
+                String str = new String(recvData);
+                System.out.println("recv: " + str);
+                writer.write(str);
             } catch (IOException e) {
                 e.printStackTrace();
             }

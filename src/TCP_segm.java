@@ -1,4 +1,7 @@
 import java.nio.ByteBuffer;
+import java.text.Format;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class TCP_segm{
     protected int sequence;
@@ -45,9 +48,26 @@ public class TCP_segm{
     public void setChecksum(short checksum){ this.checksum = checksum; }
     public void setData(byte[] data){ this.data = data; }
 
+    public String toString(){
+        String data = new String(this.data);
+        String str = "Sequence Number: " + this.getSequence() + "\n" +
+                    "Acknowledgement Number: " + this.getAcknowlegment() + "\n" +
+                    "TimeStamp: " + this.convertTime(this.timeStamp) + "\n" +
+                    "Length: " + this.length + "\n" +
+                    "Checksum: " + this.checksum + "\n" +
+                    "Data: " + data;
+        return str;
+    }
+
+    public String convertTime(long time){
+        Date date = new Date(time);
+        Format format = new SimpleDateFormat("yyyy MM dd HH:mm:ss");
+        return format.format(date);
+    }
+
     public byte[] serialize(){
 
-        this.totalLength = this.length + 32 * 6; //data legnth +all the header values
+        this.totalLength = this.length + 32 * 6; //data length +all the header values
 
         byte[] data = new byte[this.totalLength];
         ByteBuffer bb = ByteBuffer.wrap(data);
@@ -74,13 +94,17 @@ public class TCP_segm{
         return data;
     }
 
-    public TCP_segm deserialize(byte[] data, int length){
-        ByteBuffer bb = ByteBuffer.wrap(data, 0, length);
+    public TCP_segm deserialize(byte[] data){
+        String s = new String(data);
+        System.out.println("Length: " + data.length);
+        System.out.println("Data: " + s);
+        ByteBuffer bb = ByteBuffer.wrap(data, 0, data.length);
         this.sequence = bb.getInt();
         this.acknowledgment = bb.getInt();
         this.timeStamp = bb.getLong();
         this.length = bb.getInt();
         int flagNum = this.length & 7;        //bit operation to get the flag bits
+        //TODO: change to array of flags to account for cases of multiple flags
         if(flagNum == 1)
             this.flag = 'F';
         if(flagNum == 2)
@@ -88,10 +112,14 @@ public class TCP_segm{
         if(flagNum == 4)
             this.flag = 'S';
         this.length = this.length & Integer.MAX_VALUE - 7; //strip the last three bits
+        System.out.println("this.length: " + this.length);
         short allZeros = bb.getShort();
         assert(allZeros == 0);
         this.checksum = bb.getShort();
+        System.out.println("checksum" + this.checksum);
         int i = 0;
+        //TODO: change this size \/
+        this.data = new byte[1000];
         while(bb.remaining() != 0) {
             this.data[i] = bb.get();
             i++;
