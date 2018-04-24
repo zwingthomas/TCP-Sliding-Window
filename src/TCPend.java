@@ -1,11 +1,11 @@
-import java.net.SocketException;
-import java.net.UnknownHostException;
+import java.io.IOException;
+import java.net.DatagramSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class TCPend {
-    public static void main(String args[]) throws UnknownHostException {
+    public static void main(String args[]) throws IOException {
 
         int port = 0;
         String remote_IP = null;
@@ -59,6 +59,7 @@ public class TCPend {
 
         //for Sender
         if(remote == false) {
+
             //read the file from fileName
             byte[] data = null;
             try {
@@ -70,31 +71,34 @@ public class TCPend {
             //send first SYN packet
             //TCP_send();
 
-            //create TCP segments size of mtu accounting for the 24 byte header
-            int i = 0;
-            int s = 50881;
-            TCP_segm[] segArr = new TCP_segm[data.length/(mtu - 24)];
-            TCP_send sender = new TCP_send(port, remote_IP, remote_port, slidingWindow, 'D');
 
-            //while(i < data.length) {
-            byte[] d = data;
-            int length = data.length;
-            long currTime = System.currentTimeMillis();
-            TCP_segm segment = new TCP_segm(s, (s+1), currTime, length, (short) 0, d, 'D');
+            int seqNum = 0;
+            int totalBytesLoaded = 0;
+            int neededNumOfSegments = (int)Math.ceil((double)data.length/(double)(mtu - 24));
+            DatagramSocket socket = new DatagramSocket(port);
 
-            //TODO: timer for timeout
-            segment.serialize();
-            sender.send(segment);
-            s += length;
+            for(int segCnt = 0; segCnt < neededNumOfSegments; segCnt++){
+                //put data to be sent into a smaller container for transmission
+                byte[] dataToBeSent = new byte[mtu];
+                for(int dataLoadedForSeg = 0; dataLoadedForSeg < (mtu-24) && totalBytesLoaded < data.length-1; dataLoadedForSeg++) {
+                    dataToBeSent[dataLoadedForSeg] = data[totalBytesLoaded];
+                    totalBytesLoaded++;
+                }
+                //send segment
+                TCP_segm toSend = new TCP_segm(seqNum, (seqNum+1), System.nanoTime(), dataToBeSent.length + 24, (short) 0, dataToBeSent, 'D');
+                toSend.serialize(); //computes the checksum
+                TCP_send sender = new TCP_send(socket, remote_IP, remote_port, slidingWindow, 'D');
+                TCP_segm ack = sender.send(toSend);
 
-            //if this is how much we want to send, then send it
-            i += mtu;
-            //}
+                //receive ACK
+                System.out.println("Recieved acknowledgement: "+ ack.flag);
+            }
         }
 
         //for Receiver
         if(remote == true){
-            TCP_recv receiver = new TCP_recv(port, mtu, slidingWindow);
+            DatagramSocket socket = new DatagramSocket(port);
+            TCP_recv receiver = new TCP_recv(socket, mtu, slidingWindow);
             receiver.receive();
         }
 

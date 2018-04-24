@@ -32,6 +32,7 @@ public class TCP_segm{
     public int getLength(){return this.length;}
     public short getChecksum(){return this.checksum;}
     public byte[] getData(){return this.data;}
+    public char getFlag(){return this.flag;}
 
     public void setSequence(int sequence){
         this.sequence = sequence;
@@ -47,6 +48,21 @@ public class TCP_segm{
     }
     public void setChecksum(short checksum){ this.checksum = checksum; }
     public void setData(byte[] data){ this.data = data; }
+    public void setFlag(char flag){
+        this.length = this.length & Integer.MAX_VALUE - 7;
+        if(flag == 'F'){
+            this.length = this.length + 1;
+            this.flag = 'F';
+        }
+        if(flag == 'A'){
+            this.length = this.length + 2;
+            this.flag = 'A';
+        }
+        if(flag == 'S'){
+            this.length = this.length + 4;
+            this.flag = 'S';
+        }
+    }
 
     public String toString(){
         String data = new String(this.data);
@@ -67,7 +83,7 @@ public class TCP_segm{
 
     public byte[] serialize(){
 
-        this.totalLength = this.length + 32 * 6; //data length +all the header values
+        this.totalLength = this.length + 4 * 6; //data length +all the header values
 
         byte[] data = new byte[this.totalLength];
         ByteBuffer bb = ByteBuffer.wrap(data);
@@ -86,9 +102,6 @@ public class TCP_segm{
     }
 
     public TCP_segm deserialize(byte[] data){
-        String s = new String(data);
-        System.out.println("Length: " + data.length);
-        System.out.println("Data: " + s);
         ByteBuffer bb = ByteBuffer.wrap(data, 0, data.length);
         this.sequence = bb.getInt();
         this.acknowledgment = bb.getInt();
@@ -105,11 +118,9 @@ public class TCP_segm{
         if(flagNum == 6)
             this.flag = 'B'; //combination of A and S???? either this or we use an integer representation
         this.length = this.length & Integer.MAX_VALUE - 7; //strip the last three bits
-        System.out.println("this.length: " + this.length);
         short allZeros = bb.getShort();
         assert(allZeros == 0);
         this.checksum = bb.getShort();
-        System.out.println("checksum" + this.checksum);
         int i = 0;
         //TODO: change this size \/
         this.data = new byte[1000];
@@ -128,13 +139,13 @@ public class TCP_segm{
             input_str = "0"+input_str;
         //System.out.println("input: " + input_str);
         String first = input_str.substring(0, 16);
-        System.out.println("1st half: \t" + first);
+        //System.out.println("1st half: \t" + first);
         String second = input_str.substring(16, input_str.length());
-        System.out.println("2nd half: \t" + second);
+        //System.out.println("2nd half: \t" + second);
 
         //Add the two bit strings together
         String sum = addBinary(first, second);
-        System.out.println("Shortsum: " + sum);
+        //System.out.println("Shortsum: " + sum);
 
         //remember the carry!
         if(sum.length() > 16){
@@ -152,7 +163,7 @@ public class TCP_segm{
             if(flag == 1)
                 sum = "0000000000000000"; //just 16 zeros
         }
-        System.out.println("carry: " + sum);
+        //System.out.println("carry: " + sum);
 
         //flip all the bits
         String result_str = "";
@@ -162,7 +173,7 @@ public class TCP_segm{
             if(sum.charAt(i) == '0')
                 result_str = result_str + '1';
         }
-        System.out.println("result_str: " + result_str);
+        //System.out.println("result_str: " + result_str);
 
         //Add multiples of two depending on what '1' bits are set
         short result = 0;
@@ -171,7 +182,7 @@ public class TCP_segm{
                 result += Math.pow(2, i);
             }
         }
-        System.out.println("result:" + result);
+        //System.out.println("result:" + result);
 
         return result;
     }

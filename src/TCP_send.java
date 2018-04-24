@@ -3,7 +3,7 @@ import java.net.*;
 
 public class TCP_send {
 
-    private int src_port;
+    private DatagramSocket socket;
     private InetAddress remote_IP;
     private int remote_port;
     private String file_name;
@@ -11,49 +11,38 @@ public class TCP_send {
     private int sws;
     private char flag;
 
-    public TCP_send(int port, String remote_IP, int remote_port, int sws, char flag) throws UnknownHostException {
-        this.src_port = port;
+    public TCP_send(DatagramSocket socket, String remote_IP, int remote_port, int sws, char flag) throws UnknownHostException {
+        this.socket = socket;
         InetAddress addr = InetAddress.getByName(remote_IP);
         this.remote_IP = addr;
         this.remote_port = remote_port;
         this.flag = flag;
     }
 
-    public void send(TCP_segm segment) {
+    public TCP_segm send(TCP_segm segment) throws IOException {
 
-        boolean running = true;
+        //TODO: send first packet with SYN flag
 
-        DatagramSocket socket = null;
 
-        try {
-            System.out.println("src prt: " + src_port);
-            socket = new DatagramSocket(this.src_port);
-        } catch (SocketException e) {
-            e.printStackTrace();
+        //TODO: end connection with FIN
+        if (flag == 'D') {
+            //send DATA
+            System.out.println("\n\n Segment we are sending: \n" + segment.toString() + "\n\n");
+            DatagramPacket packet = new DatagramPacket(segment.serialize(), segment.totalLength, this.remote_IP, this.remote_port);
+            socket.send(packet);
+
+            byte[] buf = new byte[24];
+            packet = new DatagramPacket(buf, buf.length);
+            socket.receive(packet);
+
+            TCP_segm recv = new TCP_segm(0, 0, 0, 0, (short) 0, null, 'D');
+            recv = recv.deserialize(packet.getData());
+            return recv;
         }
+        TCP_segm bad_segm = new TCP_segm(-1, 0, 0, 0, (short) 0, null, 'D');
 
-        System.out.println(segment.toString());
+        return bad_segm;
 
-        while(running) {
-            //TODO: send first packet with SYN flag
-
-
-            //TODO: end connection with FIN
-            if (flag == 'D') {
-                //send DATA
-                DatagramPacket packet = new DatagramPacket(segment.serialize(), segment.totalLength, this.remote_IP, this.remote_port);
-                try {
-                    socket.send(packet);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                //TODO: handle receiving ACK
-            }
-            break;
-        }
+        //use UDP sockets to send to another computer --> google examples of UDP java sockets
     }
-
-
-    //use UDP sockets to send to another computer --> google examples of UDP java sockets
-
 }
