@@ -35,6 +35,10 @@ public class TCP_send {
         System.out.println(segment.toString());
 
         while(running) {
+            //TODO: send first packet with SYN flag
+
+
+            //TODO: end connection with FIN
             if (flag == 'D') {
                 //send DATA
                 DatagramPacket packet = new DatagramPacket(segment.serialize(), segment.totalLength, this.remote_IP, this.remote_port);
@@ -43,8 +47,9 @@ public class TCP_send {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                //receive ACK
+                //TODO: handle receiving ACK
             }
+            break;
         }
     }
 

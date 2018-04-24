@@ -72,7 +72,7 @@ public class TCPend {
 
             //create TCP segments size of mtu accounting for the 24 byte header
             int i = 0;
-            int s = 0;
+            int s = 50881;
             TCP_segm[] segArr = new TCP_segm[data.length/(mtu - 24)];
             TCP_send sender = new TCP_send(port, remote_IP, remote_port, slidingWindow, 'D');
 
@@ -81,6 +81,9 @@ public class TCPend {
             int length = data.length;
             long currTime = System.currentTimeMillis();
             TCP_segm segment = new TCP_segm(s, (s+1), currTime, length, (short) 0, d, 'D');
+
+            //TODO: timer for timeout
+            segment.serialize();
             sender.send(segment);
             s += length;
 

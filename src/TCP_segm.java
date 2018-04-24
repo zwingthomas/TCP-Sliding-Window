@@ -72,24 +72,15 @@ public class TCP_segm{
         byte[] data = new byte[this.totalLength];
         ByteBuffer bb = ByteBuffer.wrap(data);
 
-        bb.putInt(this.sequence);       //index: 0 - 3
-        bb.putInt(this.acknowledgment); //index: 4 - 7
-        bb.putLong(this.timeStamp);     //index: 8 - 15
-        bb.putInt(this.length + this.flag);         //index: 16 - 19
-
-        //concat 16 bits of zeros
-        short allZero = 0;
-        bb.putShort(allZero);           //index: 20 - 21
-
-        //compute checksum
-        short half = (short) this.sequence;
-        short rest = (short) (this.sequence >> 16);
-        if((short)(half + rest) < half || (short)(half + rest) < rest)
-            this.checksum = (short) (half + rest + 1);
-        else
-            this.checksum = (short) (half + rest);
-        bb.putShort(this.checksum);     //index: 22 - 23
-        bb.put(this.data);              //index: 24
+        bb.putInt(this.sequence);                     //index: 0 - 3
+        bb.putInt(this.acknowledgment);               //index: 4 - 7
+        bb.putLong(this.timeStamp);                   //index: 8 - 15
+        bb.putInt(this.length + this.flag);           //index: 16 - 19
+        short allZero = 0;                            //concat 16 bits of zeros
+        bb.putShort(allZero);                         //index: 20 - 21
+        this.checksum = computeChecksum(this.sequence);
+        bb.putShort(this.checksum);                   //index: 22 - 23
+        bb.put(this.data);                            //index: 24
 
         return data;
     }
@@ -111,6 +102,8 @@ public class TCP_segm{
             this.flag = 'A';
         if(flagNum == 4)
             this.flag = 'S';
+        if(flagNum == 6)
+            this.flag = 'B'; //combination of A and S???? either this or we use an integer representation
         this.length = this.length & Integer.MAX_VALUE - 7; //strip the last three bits
         System.out.println("this.length: " + this.length);
         short allZeros = bb.getShort();
@@ -127,4 +120,81 @@ public class TCP_segm{
         return this;
     }
 
+    public short computeChecksum(int sequenceNum){
+
+        //Get two bit strings
+        String input_str = Integer.toBinaryString(sequenceNum);
+        while(input_str.length() < 32)
+            input_str = "0"+input_str;
+        //System.out.println("input: " + input_str);
+        String first = input_str.substring(0, 16);
+        System.out.println("1st half: \t" + first);
+        String second = input_str.substring(16, input_str.length());
+        System.out.println("2nd half: \t" + second);
+
+        //Add the two bit strings together
+        String sum = addBinary(first, second);
+        System.out.println("Shortsum: " + sum);
+
+        //remember the carry!
+        if(sum.length() > 16){
+            sum = sum.substring(0, 16);
+            int flag = 1;
+            for(int i = sum.length()-1; i >= 0; i--){
+                if(sum.charAt(i) == '0'){
+                    StringBuilder sumBuilder = new StringBuilder(sum);
+                    sumBuilder.setCharAt(i, '1');
+                    sum = sumBuilder.toString();
+                    flag = 0;
+                    break;
+                }
+            }
+            if(flag == 1)
+                sum = "0000000000000000"; //just 16 zeros
+        }
+        System.out.println("carry: " + sum);
+
+        //flip all the bits
+        String result_str = "";
+        for(int i = 0; i < sum.length(); i++){
+            if(sum.charAt(i) == '1')
+                result_str = result_str + '0';
+            if(sum.charAt(i) == '0')
+                result_str = result_str + '1';
+        }
+        System.out.println("result_str: " + result_str);
+
+        //Add multiples of two depending on what '1' bits are set
+        short result = 0;
+        for(int i = 0; i < result_str.length(); i++){
+            if(result_str.charAt(result_str.length() - 1 - i) == '1'){
+                result += Math.pow(2, i);
+            }
+        }
+        System.out.println("result:" + result);
+
+        return result;
+    }
+
+    public String addBinary(String a, String b){
+        StringBuilder stringBuilder = new StringBuilder();
+        int carry = 0;
+
+        for(int i = a.length()-1; i >= 0; i--){
+            int sum=0;
+            if(a.charAt(i)=='1')
+                sum++;
+            if(b.charAt(i)=='1')
+                sum++;
+            sum += carry;
+            if(sum>=2)
+                carry=1;
+            else
+                carry=0;
+            stringBuilder.insert(0,  (char) ((sum%2) + '0'));
+        }
+        if(carry==1)
+            stringBuilder.insert(0, '1');
+        return stringBuilder.toString();
+    }
 }
