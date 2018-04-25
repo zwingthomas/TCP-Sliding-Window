@@ -133,10 +133,10 @@ public class TCP_segm{
         short allZeros = bb.getShort();
         assert(allZeros == 0);
         this.checksum = bb.getShort();
-        this.data = new byte[this.length];
+        this.data = new byte[this.getLength()];
         for(int i = 0; i < (actualLength/4); i++) {
             this.data[i] = bb.get();
-            String str = new String(this.data);
+            //String str = new String(this.data);
         }
 
         return this;
