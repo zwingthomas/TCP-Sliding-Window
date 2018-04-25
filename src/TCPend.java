@@ -48,15 +48,6 @@ public class TCPend {
             }
         }
 
-        System.out.println("-p: " + port);
-        System.out.println("-s: " + remote_IP);
-        System.out.println("-a: " + remote_port);
-        System.out.println("-f: " + file_name);
-        System.out.println("-m: " + mtu);
-        System.out.println("-c: " + sws);
-
-        int slidingWindow = 0;
-
         //for Sender
         if(remote == false) {
 
@@ -71,11 +62,16 @@ public class TCPend {
             //send first SYN packet
             //TCP_send();
 
+            //TODO: NO SLOW START
 
             int seqNum = 6969;
             int totalBytesLoaded = 0;
             int neededNumOfSegments = (int)Math.ceil((double)data.length/(double)(mtu - 24));
             DatagramSocket socket = new DatagramSocket(port);
+            TCP_send sender = new TCP_send(socket, remote_IP, remote_port, sws, 'D');
+            sender.handshake(seqNum);
+
+            //TODO: sliding window
 
             for(int segCnt = 0; segCnt < neededNumOfSegments; segCnt++){
                 //put data to be sent into a smaller container for transmission
@@ -85,7 +81,7 @@ public class TCPend {
                     System.out.println("subtraction: " + (data.length - totalBytesLoaded -1));
                     dataToBeSent = new byte[data.length - 1 - totalBytesLoaded];
                 }
-                else {
+                 else {
                     dataToBeSent = new byte[mtu];
                 }
                 int dataLoadedForSeg;
@@ -93,23 +89,19 @@ public class TCPend {
                     dataToBeSent[dataLoadedForSeg] = data[totalBytesLoaded];
                     totalBytesLoaded++;
                 }
-                System.out.println("Data loaded for segment: " + dataLoadedForSeg);
-                System.out.println("dataToBeSent length: " + dataToBeSent.length);
                 //send segment
                 TCP_segm toSend = new TCP_segm(seqNum, (seqNum+1), System.nanoTime(), dataLoadedForSeg * 4, (short) 0, dataToBeSent, "D");
                 toSend.serialize(); //computes the checksum
-                TCP_send sender = new TCP_send(socket, remote_IP, remote_port, slidingWindow, 'D');
+
                 TCP_segm ack = sender.send(toSend);
-
-                //receive ACK
-
             }
         }
 
         //for Receiver
         if(remote == true){
             DatagramSocket socket = new DatagramSocket(port);
-            TCP_recv receiver = new TCP_recv(socket, mtu, slidingWindow);
+            TCP_recv receiver = new TCP_recv(socket, mtu, sws);
+            receiver.handshake(500);
             receiver.receive();
         }
 

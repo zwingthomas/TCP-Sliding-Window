@@ -19,6 +19,7 @@ public class TCP_segm{
         this.acknowledgment = a;
         this.timeStamp = t;
         this.length = l;
+        this.totalLength = this.length + 24;
         setFlag(f);
         this.checksum = c;
         this.data = d;
@@ -86,12 +87,15 @@ public class TCP_segm{
 
     public String toString(){
         String data = new String(this.data);
+        //TODO: memory error lulz
+
         String str = "Sequence Number: " + this.getSequence() + "\n" +
                     "Acknowledgement Number: " + this.getAcknowlegment() + "\n" +
                     "TimeStamp: " + this.timeStamp + "\n" +
                     "Length: " + this.length + "\n" +
                     "Checksum: " + this.checksum + "\n" +
-                    "Data: " + data;
+                    "Data: " + data + "\n" +
+                    "Flag:" + this.getFlag();
         return str;
     }
 
@@ -105,7 +109,6 @@ public class TCP_segm{
         bb.putInt(this.sequence);                     //index: 0 - 3
         bb.putInt(this.acknowledgment);               //index: 4 - 7
         bb.putLong(this.timeStamp);                   //index: 8 - 15
-        System.out.println("THIS.LENGTH: " + Integer.reverse(this.length));
         bb.putInt(Integer.reverse(this.length));      //index: 16 - 19
         short allZero = 0;                            //concat 16 bits of zeros
         bb.putShort(allZero);                         //index: 20 - 21
@@ -123,14 +126,15 @@ public class TCP_segm{
         this.acknowledgment = bb.getInt();
         this.timeStamp = bb.getLong();
         int rLength = bb.getInt();
-        rLength = rLength >> 3;
-        rLength = rLength << 3;
-        this.length = Integer.reverse(rLength); //strip the last three bits
+        int temp = rLength >> 3;
+        temp = temp << 3;
+        int actualLength = Integer.reverse(temp); //strip the last three bits
+        this.length = Integer.reverse(rLength);
         short allZeros = bb.getShort();
         assert(allZeros == 0);
         this.checksum = bb.getShort();
         this.data = new byte[this.length];
-        for(int i = 0; i < (this.length/4); i++) {
+        for(int i = 0; i < (actualLength/4); i++) {
             this.data[i] = bb.get();
             String str = new String(this.data);
         }
