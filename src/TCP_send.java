@@ -27,19 +27,20 @@ public class TCP_send {
         //TODO: end connection with FIN
         if (flag == 'D') {
             //send DATA
-            System.out.println("\n\n Segment we are sending: \n" + segment.toString() + "\n\n");
-            DatagramPacket packet = new DatagramPacket(segment.serialize(), segment.totalLength, this.remote_IP, this.remote_port);
+            segment.serialize();
+            System.out.println("\n\n Segment we are sending: \n" + segment.toString());
+            DatagramPacket packet = new DatagramPacket(segment.serialize(), 0, segment.totalLength, this.remote_IP, this.remote_port);
             socket.send(packet);
 
             byte[] buf = new byte[24];
             packet = new DatagramPacket(buf, buf.length);
             socket.receive(packet);
 
-            TCP_segm recv = new TCP_segm(0, 0, 0, 0, (short) 0, null, 'D');
+            TCP_segm recv = new TCP_segm(0, 0, 0, 0, (short) 0, null, "D");
             recv = recv.deserialize(packet.getData());
             return recv;
         }
-        TCP_segm bad_segm = new TCP_segm(-1, 0, 0, 0, (short) 0, null, 'D');
+        TCP_segm bad_segm = new TCP_segm(-1, 0, 0, 0, (short) 0, null, "D");
 
         return bad_segm;
 
