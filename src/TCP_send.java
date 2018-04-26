@@ -10,6 +10,7 @@ public class TCP_send {
     private int mtu;
     private int sws;
     private char flag;
+    private int sequenceSender;
 
     //variables for timeOut calculation
     long ERTT;
@@ -31,59 +32,72 @@ public class TCP_send {
         //TODO: end connection with FIN
         //TODO: use only the TCP_segm passed in so that it can be accessed to know if it has been acked
         if (flag == 'D') {
-            //send DATA
-            segment.serialize();
-            System.out.println("\n\nSegment we are sending: \n" + segment.toString());
-            DatagramPacket packet = new DatagramPacket(segment.serialize(), 0, segment.totalLength, this.remote_IP, this.remote_port);
-            socket.send(packet);
-
-            byte[] buf = new byte[24];
-            packet = new DatagramPacket(buf, buf.length);
-            socket.receive(packet);
-
-            TCP_segm recv = new TCP_segm(0, 0, 0, 0, (short) 0, null, "D");
-            recv = recv.deserialize(packet.getData());
-            computeTimeout(recv.timeStamp, recv.sequence);
-            return recv;
+            sendData(segment); //send DATA
+            TCP_segm ack = receiveAck(); //receive ACK
+            return ack;
         }
-        TCP_segm bad_segm = new TCP_segm(-1, 0, 0, 0, (short) 0, null, "D");
+        return null;
+    }
 
-        return bad_segm;
+    public void handshake(int initSeqNum) throws IOException {
+        //Send SYN
+        sendNoData("S", initSeqNum);
+
+        //Receive SYNACK
+        TCP_segm ack = receiveAck();
+
+        //Send ACK
+       sendNoData("A", initSeqNum + 1);
+    }
+
+    public void connectionTeardown() throws IOException {
+        //Send FIN
+
+        sendNoData("F", this.sequenceSender);
+
+        //Receive ACK
+        TCP_segm ack = receiveAck();
+
+        //Receive FINACK
+        TCP_segm finAck = receiveAck();
+
+        //Send ack
+        sendNoData("A", finAck.sequence + 1);
+        System.exit(0);
 
     }
 
-    public boolean handshake(int initSeqNum) throws IOException {
-
-        //Send SYN
-        byte[] empty = new byte[0];
-        TCP_segm syn = new TCP_segm(initSeqNum, 0, System.nanoTime(), 0, (short) 0, empty, "S");
-        syn.serialize();
-        DatagramPacket packet = new DatagramPacket(syn.serialize(), 0, syn.totalLength, this.remote_IP, this.remote_port);
+    public void sendData(TCP_segm segment) throws IOException {
+        segment.serialize();
+        System.out.println("\n\nSegment we are sending: \n" + segment.toString());
+        DatagramPacket packet = new DatagramPacket(segment.serialize(), 0, segment.getLength() + 24, this.remote_IP, this.remote_port);
         socket.send(packet);
-        System.out.println("SYN SENT____________________");
-        System.out.println(syn.toString());
+    }
 
-        //Receive SYNACK
+    public void sendNoData(String flag, int seqNum) throws IOException {
+        int size = 0;
+        byte[] buf = new byte[size];
+        TCP_segm tcpSegm = new TCP_segm(seqNum, 0, System.nanoTime(), 0, (short) 0, buf, flag);
+        tcpSegm.serialize();
+        DatagramPacket packet = new DatagramPacket(tcpSegm.serialize(), 0, tcpSegm.getLength() + 24, this.remote_IP, this.remote_port);
+        socket.send(packet);
+        System.out.println("SENT____________________");
+        System.out.println(tcpSegm.toString());
+        System.out.println();
+        computeTimeout(tcpSegm.timeStamp, tcpSegm.sequence);
+    }
+
+    public TCP_segm receiveAck() throws IOException{
         byte[] buf = new byte[24];
-        packet = new DatagramPacket(buf, buf.length);
+        DatagramPacket packet = new DatagramPacket(buf, buf.length);
         socket.receive(packet);
-        TCP_segm synack = new TCP_segm(0, 0, 0, 0, (short) 0, null, "E");
-        synack = synack.deserialize(packet.getData());
-        System.out.println("SYNACK RECV____________________");
-        System.out.println(synack.toString());
-        computeTimeout(synack.timeStamp, synack.sequence);
-
-        //Send ACK
-        byte[] emptyBuf = new byte[0];
-        TCP_segm ack = new TCP_segm(initSeqNum + 1,synack.sequence+1, synack.timeStamp, 0, (short) 0, empty, "A");
-        ack.serialize();
-        packet = new DatagramPacket(ack.serialize(), ack.totalLength, this.remote_IP, this.remote_port);
-        socket.send(packet);
-        System.out.println("ACK SENT______________________");
+        TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, null, "E");
+        ack = ack.deserialize(packet.getData());
+        System.out.println("RECV____________________");
         System.out.println(ack.toString());
-
-
-        return true;
+        System.out.println();
+        computeTimeout(ack.timeStamp, ack.sequence);
+        return ack;
     }
 
     public void computeTimeout(long timestamp, int sequenceNum){
