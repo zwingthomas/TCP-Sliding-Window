@@ -24,12 +24,10 @@ public class TCP_recv {
         boolean running = true;
         Writer wr = new FileWriter("r.txt");
 
-        //TODO: Handle connection starting with SYN
         //TODO: implement triple duplicate ACKS
-        //TODO: Handle connection end with FIN
         while (running) {
             TCP_segm recv = receiveData();  //receive the data
-
+            System.out.println(recv.toString());
 
             if(recv.getFlag().contains("D")){
                 String str = new String(recv.getData(), 0, recv.getLength());
@@ -43,20 +41,20 @@ public class TCP_recv {
 
             //TODO: manage TimeOut and SequenceNumber
 
-            sendAck("A", recv.sequence, recv.timeStamp);//send ACK
+            sendAck("A", 0, recv.sequence, recv.timeStamp);//send ACK
         }
     }
 
     public void handshake(int initSeqNum) throws IOException {
         TCP_segm recv;
         recv = receiveData();                                   //receive SYN
-        sendAck("SA", recv.sequence, recv.timeStamp);      //Send SYNACK
+        sendAck("SA", 500, recv.sequence, recv.timeStamp);      //Send SYNACK
         receiveData();                                          //Receive ACK
     }
 
     public void connectionTeardown(TCP_segm recv) throws IOException {
-        sendAck("A", recv.sequence, recv.timeStamp);       //Send ACK
-        sendAck("FA", recv.sequence + 1, System.nanoTime()); //Send FIN + ACK
+        sendAck("A", 0, recv.sequence, recv.timeStamp);       //Send ACK
+        sendAck("FA", 501,recv.sequence + 1, System.nanoTime()); //Send FIN + ACK
         receiveData();                                          //Receive ACK
         System.exit(0);
     }
@@ -71,8 +69,6 @@ public class TCP_recv {
         System.out.println("RECV____________________");
         System.out.println(recv.toString());
         System.out.println();
-        String str = new String(recv.getData(), 0, recv.getLength()/4);
-
         if(recv.sequence == 0){
             this.senderPort = packet.getPort();
             this.senderIP = packet.getAddress();
@@ -81,9 +77,10 @@ public class TCP_recv {
         return recv;
     }
 
-    public void sendAck(String flag, int prevSeqNum, long prevTimeStamp) throws IOException {
+    //TODO: send duplicate ACKS if packet is received out of sequence
+    public void sendAck(String flag, int sequenceNum, int prevSeqNum, long prevTimeStamp) throws IOException {
         byte[] empty = new byte[0];
-        TCP_segm send = new TCP_segm(0, prevSeqNum+1, prevTimeStamp, 0, (short) 0, empty, flag);
+        TCP_segm send = new TCP_segm(sequenceNum, prevSeqNum+1, prevTimeStamp, 0, (short) 0, empty, flag);
         send.serialize();
         DatagramPacket packet = new DatagramPacket(send.serialize(), send.getLength() + 24, senderIP, senderPort);
         socket.send(packet);

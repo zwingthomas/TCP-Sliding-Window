@@ -5,7 +5,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class TCPend {
-    public static void main(String args[]) throws IOException {
+    public static void main(String args[]) throws IOException, InterruptedException {
 
         int port = 0;
         String remote_IP = null;
@@ -64,36 +64,37 @@ public class TCPend {
 
             //TODO: NO SLOW START
 
-            int seqNum = 0;
-            int totalBytesLoaded = 0;
-            int neededNumOfSegments = (int)Math.ceil((double)data.length/(double)(mtu - 24));
-            DatagramSocket socket = new DatagramSocket(port);
-            TCP_send sender = new TCP_send(socket, remote_IP, remote_port, sws, 'D');
-            sender.handshake(seqNum);
 
             //TODO: sliding window
 
+            //put data to be sent into a smaller container for transmission
+            int seqNum = 1; //sequence number starts at 1 due to handshake
+            int totalBytesLoaded = 0;
+            int neededNumOfSegments = (int)Math.ceil((double)data.length/(double)(mtu - 24));
+            DatagramSocket socket = new DatagramSocket(port);
+            TCP_segm toSend[] = new TCP_segm[neededNumOfSegments];
             for(int segCnt = 0; segCnt < neededNumOfSegments; segCnt++){
-                //put data to be sent into a smaller container for transmission
                 byte[] dataToBeSent;
                 if(segCnt == neededNumOfSegments - 1)
                     dataToBeSent = new byte[data.length - 1 - totalBytesLoaded];
                  else
                     dataToBeSent = new byte[mtu-24];
-
                 int dataLoadedForSeg;
                 for(dataLoadedForSeg = 0; dataLoadedForSeg < (mtu-24) && totalBytesLoaded < data.length-1; dataLoadedForSeg++) {
                     dataToBeSent[dataLoadedForSeg] = data[totalBytesLoaded];
                     totalBytesLoaded++;
                 }
-                //send segment
-                System.out.println("DataLoadedForSeg: " + dataLoadedForSeg);
-                TCP_segm toSend = new TCP_segm(seqNum, (seqNum+1), System.nanoTime(), dataLoadedForSeg, (short) 0, dataToBeSent, "D");
-                toSend.serialize(); //computes the checksum
-
-                TCP_segm ack = sender.send(toSend);
-
+                seqNum += dataLoadedForSeg;
+                toSend[segCnt] = new TCP_segm(seqNum, 0, System.nanoTime(), dataLoadedForSeg, (short) 0, dataToBeSent, "D");
+                toSend[segCnt].serialize(); //computes the checksum
             }
+
+
+            TCP_send sender = new TCP_send(socket, remote_IP, remote_port, sws, 'D');
+            //TODO: watch out for dropped handshake packets
+            sender.handshake(0);
+            sender.send(toSend);
+            System.out.println("\t\t\t\t\t\t\t\tBEGIN TEARDOWN");
             sender.connectionTeardown();
         }
 
