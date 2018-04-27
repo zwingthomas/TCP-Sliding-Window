@@ -2,8 +2,9 @@ import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
-public class TCP_send extends Thread{
+public class TCP_send extends Thread {
 
     private DatagramSocket socket;
     private InetAddress remote_IP;
@@ -33,38 +34,35 @@ public class TCP_send extends Thread{
 
     public void send(TCP_segm[] segmArr) throws InterruptedException {
 
-        //Complete connectino setup
-        //TODO: manage concurrency with locks
-        HashMap<Integer, Boolean> isAcked= new HashMap<Integer, Boolean>();
+        HashMap<Integer, Long> isAcked = new HashMap<Integer, Long>();
         ArrayList<Integer> inTransit = new ArrayList<Integer>();
+        ReentrantLock lock = new ReentrantLock();
 
         Thread sendData = new Thread(new Runnable() {
             @Override
             public void run() {
                 int segsSent = 0;
                 int sendable = sws;
-
-                while(segsSent < segmArr.length || inTransit.size() != 0) {
+                while (segsSent < segmArr.length) {
+                    while (inTransit.size() != 0 && isAcked.get(inTransit.get(0)).equals(-1L)) {
+                        isAcked.remove(inTransit.get(0));
+                        inTransit.remove(0);
+                        sendable++;
+                    }
                     while (segsSent < sendable && segsSent < segmArr.length) {
                         try {
-                            System.out.println("\t\t\t\t\t\t"+segsSent);
+                            lock.lock();
                             sendData(segmArr[segsSent]);
-                            isAcked.put(segmArr[segsSent].sequence, false);
+                            isAcked.put(segmArr[segsSent].sequence, segmArr[segsSent].timeStamp);
                             inTransit.add(segmArr[segsSent].sequence);
                             segsSent++;
                         } catch (IOException e) {
                             e.printStackTrace();
+                        } finally {
+                            lock.unlock();
                         }
                     }
-                        //System.out.println("The desired Ack: " + inTransit.get(0));
-                        //System.out.println("isAcked.get(): "+isAcked.get(inTransit.get(0)));
-                        while (inTransit.size() != 0 && isAcked.get(inTransit.get(0)).equals(true)) {
-                            System.out.println("\t\t\tACK REMOVED!!!: " + inTransit.get(0));
-                            inTransit.remove(0);
-                            sendable++;
-                        }
                 }
-                System.out.println("\t\t\t\t\t\tDONE SENDING!");
                 isSending = false;
             }
         });
@@ -74,16 +72,23 @@ public class TCP_send extends Thread{
         int ackNum = 0;
         while (ackNum < segmArr.length) {
             try {
+                System.out.println("Waiting to recv.");
                 TCP_segm ack = receiveAck();
-                isAcked.put((ack.acknowledgment - 1), true);
-                System.out.println("\nACK RECIEVED: " + isAcked.toString() +"\n");
+                computeTimeout(ack.timeStamp, ack.acknowledgment-1);
+                System.out.println("Received.");
+                lock.lock();
+                isAcked.put((ack.acknowledgment - 1), -1L);
+                System.out.println("\t\t\t\t\tSet " + (ack.acknowledgment -1) + " to TRUE");
+                //System.out.println("\nACK RECIEVED: " + isAcked.toString() + "\n");     //concurr error
                 ackNum++;
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            finally{
+                lock.unlock();
+            }
         }
         sendData.join();
-        System.out.println("\t\t\t\t\t\t\t FREEEEDOMMMMM!!");
     }
 
     public void handshake(int initSeqNum) throws IOException {
@@ -119,7 +124,7 @@ public class TCP_send extends Thread{
         segment.serialize();
         DatagramPacket packet = new DatagramPacket(segment.serialize(), 0, segment.getLength() + 24, this.remote_IP, this.remote_port);
         System.out.println("Sending_______________");
-        System.out.println(segment.toString()+"\n");
+        System.out.println(segment.toString() + "\n");
         socket.send(packet);
     }
 
@@ -129,38 +134,38 @@ public class TCP_send extends Thread{
         TCP_segm tcpSegm = new TCP_segm(seqNum, 0, System.nanoTime(), 0, (short) 0, buf, flag);
         tcpSegm.serialize();
         System.out.println("Sending_______________");
-        System.out.println(tcpSegm.toString()+"\n");
+        System.out.println(tcpSegm.toString() + "\n");
         DatagramPacket packet = new DatagramPacket(tcpSegm.serialize(), 0, tcpSegm.getLength() + 24, this.remote_IP, this.remote_port);
         socket.send(packet);
     }
 
-    public TCP_segm receiveAck() throws IOException{
+    public TCP_segm receiveAck() throws IOException {
         byte[] buf = new byte[24];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
         socket.receive(packet);
         TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, null, "E");
         ack = ack.deserialize(packet.getData());
         System.out.println("Recving_______________");
-        System.out.println(ack.toString()+"\n");
+        System.out.println(ack.toString() + "\n");
         computeTimeout(ack.timeStamp, ack.sequence);
         return ack;
     }
 
-    public void computeTimeout(long timestamp, int sequenceNum){
+    public void computeTimeout(long timestamp, int sequenceNum) {
         double a = 0.875;
         double b = 0.75;
-        if(sequenceNum == 0){
+        if (sequenceNum == 0) {
             this.ERTT = System.nanoTime() - timestamp;
             this.EDEV = 0;
             this.timeout = 2 * this.ERTT;
-        }
-        else{
+        } else {
             long SRTT = System.nanoTime() - timestamp;
             long SDEV = Math.abs(SRTT - ERTT);
-            this.ERTT = (long)(a * this.ERTT) + (long)((1 - a) * SRTT);
-            this.EDEV = (long)(b * this.EDEV) + (long)((1 - b) * SDEV);
+            this.ERTT = (long) (a * this.ERTT) + (long) ((1 - a) * SRTT);
+            this.EDEV = (long) (b * this.EDEV) + (long) ((1 - b) * SDEV);
             this.timeout = this.ERTT + (4 * this.EDEV);
         }
+        System.out.println("TIMEOUT: " + this.timeout);
     }
 }
 
