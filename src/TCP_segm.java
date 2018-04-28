@@ -206,4 +206,22 @@ public class TCP_segm{
             stringBuilder.insert(0, '1');
         return stringBuilder.toString();
     }
+
+    public static void startTimer(TCP_send sender){
+
+        //begin timer thread
+
+        Thread timer = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                //calculate time
+                if(sender.getTimeout() > this./*This threads time existing*/){
+                    //send signal to host thread to wake up retransmit.
+                }
+            }
+        }){
+
+        };
+
+    }
 }

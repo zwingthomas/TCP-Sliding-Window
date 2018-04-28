@@ -11,7 +11,7 @@ public class TCP_send extends Thread {
     private int remote_port;
     private String file_name;
     private int mtu;
-    private int sws;
+    protected int sws;
     private char flag;
     private int sequenceSender;
 
@@ -19,7 +19,7 @@ public class TCP_send extends Thread {
     //variables for timeOut calculation
     long ERTT;
     long EDEV;
-    long timeout;
+    private long timeout;
 
     public TCP_send(DatagramSocket socket, String remote_IP, int remote_port, int sws, char flag) throws UnknownHostException {
         this.socket = socket;
@@ -33,39 +33,16 @@ public class TCP_send extends Thread {
 
     public void send(TCP_segm[] segmArr) throws InterruptedException {
 
-        HashMap<Integer, TCP_segm> inTransit = new HashMap<Integer, TCP_segm>();
+        HashMap<Integer, TCP_segm> inTransit = new HashMap<>();
         ReentrantLock lock = new ReentrantLock();
+        Thread sendData = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
 
-        Thread sendData = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                int segsSent = 0;
-                while (segsSent < segmArr.length) {
-                    try {
-                        lock.lock();
-                        if (inTransit.size() < sws) {
-                            segmArr[segsSent].setTimeStamp(System.nanoTime());
-                            sendData(segmArr[segsSent]);
-                            inTransit.put(segmArr[segsSent].sequence, segmArr[segsSent]);
-                            segsSent++;
-                        }
-                        for(HashMap.Entry<Integer, TCP_segm> entry : inTransit.entrySet()) {
-                            if((System.nanoTime() - entry.getValue().timeStamp) > timeout){
-                                inTransit.remove(entry);
-                                entry.getValue().setTimeStamp(System.nanoTime());
-                                sendData(entry.getValue());
-                                inTransit.put(entry.getValue().sequence, entry.getValue());
-                            }
-                        }
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } finally {
-                        lock.unlock();
-                    }
-                }
-            }
-        });
+        Thread retransmit = new Thread(new Runnable() {
+            inTransit.remove(entry);
+            entry.getValue().setTimeStamp(System.nanoTime());
+            sendData(entry.getValue());
+            inTransit.put(entry.getValue().sequence, entry.getValue());
+        }
 
         sendData.start();
 
@@ -139,7 +116,7 @@ public class TCP_send extends Thread {
         socket.receive(packet);
         TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, null, "E");
         ack = ack.deserialize(packet.getData());
-        //System.out.println("\t\t\t\t\t\tRTT in RECV" + (System.nanoTime() - ack.timeStamp));
+        System.out.println("\t\t\t\t\t\tRTT in RECV" + (System.nanoTime() - ack.timeStamp));
         computeTimeout(ack.timeStamp, ack.acknowledgment-1);
         //System.out.println("Recving_______________");
         //System.out.println(ack.toString() + "\n");
@@ -170,9 +147,48 @@ public class TCP_send extends Thread {
         }
         System.out.println("TIMEOUT TIME: " + this.timeout);
     }
+    public long getTimeout(){return this.timeout;}
 }
 
-
+class SendDataRunnable implements Runnable{
+    protected TCP_segm[] segmArr;
+    protected TCP_send sender;
+    ReentrantLock lock;
+    HashMap<Integer, TCP_segm> inTransit;
+    public SendDataRunnable(TCP_segm[] segmArr, TCP_send sender, ReentrantLock lock, HashMap<Integer, TCP_segm> inTransit) {
+        this.segmArr = segmArr;
+        this.sender = sender;
+        this.inTransit = inTransit;
+        this.lock = lock;
+    }
+    public void run() {
+        int segsSent = 0;
+        while (segsSent < segmArr.length) {
+            try {
+                lock.lock();
+                if (inTransit.size() < sender.sws) {
+                    segmArr[segsSent].setTimeStamp(System.nanoTime());
+                    sender.sendData(segmArr[segsSent]);
+                    segmArr[segsSent].startTimer(sender);
+                    inTransit.put(segmArr[segsSent].sequence, segmArr[segsSent]);
+                    segsSent++;
+                }
+                        for(HashMap.Entry<Integer, TCP_segm> entry : inTransit.entrySet()) {
+                            if((System.nanoTime() - entry.getValue().timeStamp) > timeout){
+                                inTransit.remove(entry);
+                                entry.getValue().setTimeStamp(System.nanoTime());
+                                sendData(entry.getValue());
+                                inTransit.put(entry.getValue().sequence, entry.getValue());
+                            }
+                        }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
+}
 
 
 
