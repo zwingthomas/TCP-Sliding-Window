@@ -150,7 +150,7 @@ public class TCP_send extends Thread {
 
 class SendDataRunnable implements Runnable{
     protected TCP_segm[] segmArr;
-    protected final TCP_send sender;
+    public final TCP_send sender;
     ReentrantLock lock;
     HashMap<Integer, TCP_segm> inTransit;
     public SendDataRunnable(TCP_segm[] segmArr, TCP_send sender, ReentrantLock lock, HashMap<Integer, TCP_segm> inTransit) {
