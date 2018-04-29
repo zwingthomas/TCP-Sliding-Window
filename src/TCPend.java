@@ -62,7 +62,6 @@ public class TCPend {
             //send first SYN packet
             //TCP_send();
 
-            //TODO: NO SLOW START
 
             //put data to be sent into a smaller container for transmission
             int seqNum = 1; //sequence number starts at 1 due to handshake
@@ -87,7 +86,7 @@ public class TCPend {
             }
 
 
-            TCP_send sender = new TCP_send(socket, remote_IP, remote_port, sws, 'D');
+            TCP_send sender = new TCP_send(socket, remote_IP, remote_port, sws, 'D', file_name);
             //TODO: watch out for dropped handshake packets
             sender.handshake(0);
             sender.send(toSend);

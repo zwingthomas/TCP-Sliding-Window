@@ -14,7 +14,7 @@ public class TCP_recv {
     private int senderPort;
     private InetAddress senderIP;
     private int senderSeqNum;
-
+    private String fileName;
 
     public TCP_recv(DatagramSocket socket, int mtu, int sws) {
         this.socket = socket;
@@ -27,7 +27,7 @@ public class TCP_recv {
         int prevAck = -1;
         byte[] buf = new byte[this.mtu];
         boolean running = true;
-        Writer wr = new FileWriter("r.txt");
+
         HashMap<Integer, byte[]> dataBuf = new HashMap<>();
 
         //TODO: implement triple duplicate ACKS
@@ -57,6 +57,7 @@ public class TCP_recv {
                 dataBuf.put(recv.sequence, recv.getData());
             }
             else if(recv.getFlag().contains("F")){
+                this.fileName = new String(recv.getData());
                 connectionTeardown(recv);
                 running = false;
             }
@@ -67,7 +68,7 @@ public class TCP_recv {
             expectedNextSeq = recv.sequence + recv.getData().length;
             prevAck = acknowledgment+1;
         }
-
+        Writer wr = new FileWriter(fileName + "1");
         //sort HashMap and print it out
         Object[] keys = dataBuf.keySet().toArray();
         Arrays.sort(keys);

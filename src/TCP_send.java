@@ -21,7 +21,7 @@ public class TCP_send extends Thread {
     long EDEV;
     private long timeout;
 
-    public TCP_send(DatagramSocket socket, String remote_IP, int remote_port, int sws, char flag) throws UnknownHostException {
+    public TCP_send(DatagramSocket socket, String remote_IP, int remote_port, int sws, char flag, String file_name) throws UnknownHostException {
         this.socket = socket;
         InetAddress addr = InetAddress.getByName(remote_IP);
         this.remote_IP = addr;
@@ -29,6 +29,7 @@ public class TCP_send extends Thread {
         this.flag = flag;
         this.timeout = 5000000000L;
         this.sws = sws;
+        this.file_name = file_name;
     }
 
     public void send(TCP_segm[] segmArr) throws InterruptedException {
@@ -36,6 +37,7 @@ public class TCP_send extends Thread {
         HashMap<Integer, TCP_segm> inTransit = new HashMap<>();
         ReentrantLock lock = new ReentrantLock();
         Thread sendData = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
+        //Thread retransmit = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
 
         sendData.start();
 
@@ -72,8 +74,9 @@ public class TCP_send extends Thread {
 
     public void connectionTeardown() throws IOException {
         //Send FIN
-
-        sendNoData("F", this.sequenceSender);
+        byte[] buf = file_name.getBytes();
+        TCP_segm finalSeg = new TCP_segm(this.sequenceSender, 0, System.nanoTime(), file_name.length(), (short) 0, buf, "F");
+        sendData(finalSeg);
 
         //Receive ACK
         TCP_segm ack = receiveAck();
@@ -147,7 +150,7 @@ public class TCP_send extends Thread {
 
 class SendDataRunnable implements Runnable{
     protected TCP_segm[] segmArr;
-    protected TCP_send sender;
+    final TCP_send sender;
     ReentrantLock lock;
     HashMap<Integer, TCP_segm> inTransit;
     public SendDataRunnable(TCP_segm[] segmArr, TCP_send sender, ReentrantLock lock, HashMap<Integer, TCP_segm> inTransit) {
@@ -184,13 +187,21 @@ class Retransmit implements Runnable{
     protected TCP_send sender;
     ReentrantLock lock;
     HashMap<Integer, TCP_segm> inTransit;
-    public Retransmit(TCP_segm[] segmArr, TCP_send sender, ReentrantLock lock, HashMap<Integer, TCP_segm> inTransit) {
+    Object wake;
+    public Retransmit(TCP_segm[] segmArr, TCP_send sender, ReentrantLock lock, ArrayList<TCP_segm> toSend, Object wake) {
         this.segmArr = segmArr;
         this.sender = sender;
         this.inTransit = inTransit;
         this.lock = lock;
+        this.wake = wake;
     }
     public void run() {
+        try{
+            wake.wait();
+        }
+        catch(InterruptedException e){
+
+        }
 
     }
 }
