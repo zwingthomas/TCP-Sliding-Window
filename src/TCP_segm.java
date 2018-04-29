@@ -210,7 +210,6 @@ public class TCP_segm{
     public void startTimer(TCP_send sender){
 
         //begin timer thread
-
         Thread timer = new Thread(new Runnable() {
             @Override
             public void run() {
