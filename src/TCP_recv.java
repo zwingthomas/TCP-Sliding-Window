@@ -2,6 +2,9 @@ import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 
 public class TCP_recv {
 
@@ -20,29 +23,60 @@ public class TCP_recv {
     }
 
     public void receive() throws IOException {
+        int expectedNextSeq = -1;
+        int prevAck = -1;
         byte[] buf = new byte[this.mtu];
         boolean running = true;
         Writer wr = new FileWriter("r.txt");
+        HashMap<Integer, byte[]> dataBuf = new HashMap<>();
 
         //TODO: implement triple duplicate ACKS
         while (running) {
             TCP_segm recv = receiveData();  //receive the data
+
+            //Checking for out of order packets
+            int acknowledgment = recv.sequence;
+            if(recv.sequence != expectedNextSeq && expectedNextSeq != -1) {
+                acknowledgment = prevAck;
+            }
+
+            //Fast Retransmit in the case that the checksums do not match
+            short recvd_checksum = recv.getChecksum();
+            recv.serialize(); //recompute checksum
+            if(recv.getChecksum() != recvd_checksum){
+                sendAck("A", 0, recv.sequence, recv.timeStamp); //TRIPLE
+                sendAck("A", 0, recv.sequence, recv.timeStamp); //DUPLICATE
+                sendAck("A", 0, recv.sequence, recv.timeStamp); //ACK
+                sendAck("A", 0, recv.sequence, recv.timeStamp);
+                continue;
+            }
+
             System.out.println(recv.toString());
 
             if(recv.getFlag().contains("D")){
-                String str = new String(recv.getData(), 0, recv.getLength());
-                wr.write(str);
-                wr.flush();
+                dataBuf.put(recv.sequence, recv.getData());
             }
             else if(recv.getFlag().contains("F")){
                 connectionTeardown(recv);
+                running = false;
             }
-
 
             //TODO: manage TimeOut and SequenceNumber
 
-            sendAck("A", 0, recv.sequence, recv.timeStamp);//send ACK
+            sendAck("A", 0, acknowledgment + 1, recv.timeStamp);
+            expectedNextSeq = recv.sequence + recv.getData().length;
+            prevAck = acknowledgment+1;
         }
+
+        //sort HashMap and print it out
+        Object[] keys = dataBuf.keySet().toArray();
+        Arrays.sort(keys);
+        for(Object key : keys){
+            String str = new String(dataBuf.get(key));
+            wr.write(str);
+            wr.flush();
+        }
+        System.exit(0);
     }
 
     public void handshake(int initSeqNum) throws IOException {
@@ -56,7 +90,6 @@ public class TCP_recv {
         sendAck("A", 0, recv.sequence, recv.timeStamp);       //Send ACK
         sendAck("FA", 501,recv.sequence + 1, System.nanoTime()); //Send FIN + ACK
         receiveData();                                          //Receive ACK
-        System.exit(0);
     }
 
     public TCP_segm receiveData() throws IOException {
@@ -78,9 +111,9 @@ public class TCP_recv {
     }
 
     //TODO: send duplicate ACKS if packet is received out of sequence
-    public void sendAck(String flag, int sequenceNum, int prevSeqNum, long prevTimeStamp) throws IOException {
+    public void sendAck(String flag, int sequenceNum, int nextExpectedSeq, long prevTimeStamp) throws IOException {
         byte[] empty = new byte[0];
-        TCP_segm send = new TCP_segm(sequenceNum, prevSeqNum+1, prevTimeStamp, 0, (short) 0, empty, flag);
+        TCP_segm send = new TCP_segm(sequenceNum, nextExpectedSeq, prevTimeStamp, 0, (short) 0, empty, flag);
         send.serialize();
         DatagramPacket packet = new DatagramPacket(send.serialize(), send.getLength() + 24, senderIP, senderPort);
         socket.send(packet);

@@ -64,9 +64,6 @@ public class TCPend {
 
             //TODO: NO SLOW START
 
-
-            //TODO: sliding window
-
             //put data to be sent into a smaller container for transmission
             int seqNum = 1; //sequence number starts at 1 due to handshake
             int totalBytesLoaded = 0;
@@ -105,12 +102,6 @@ public class TCPend {
             receiver.handshake(500);
             receiver.receive();
         }
-
-        //send data in units of mtu -> http://www.baeldung.com/udp-in-java
-
-
-        //keep track of packets sent so far which have not been acknowledged
-
     }
 }
 
