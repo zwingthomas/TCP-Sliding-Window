@@ -207,7 +207,7 @@ public class TCP_segm{
         return stringBuilder.toString();
     }
 
-    public void startTimer(TCP_send sender){
+    public void startTimer(final TCP_send sender){
 
         //begin timer thread
         Thread timer = new Thread(new Runnable() {
