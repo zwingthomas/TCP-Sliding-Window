@@ -37,19 +37,15 @@ public class TCP_send extends Thread {
         ReentrantLock lock = new ReentrantLock();
         Thread sendData = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
 
-        Thread retransmit = new Thread(new Runnable() {
-            inTransit.remove(entry);
-            entry.getValue().setTimeStamp(System.nanoTime());
-            sendData(entry.getValue());
-            inTransit.put(entry.getValue().sequence, entry.getValue());
-        }
-
         sendData.start();
 
         int ackNum = 0;
         while (ackNum < segmArr.length) {
             try {
                 TCP_segm ack = receiveAck();
+                System.out.println("rcv " + System.nanoTime()/1000000000 + " " + ack.getFlag() +
+                        " "+ack.getSequence()+" "+ack.getData().length + " "+ ack.getAcknowlegment());
+                computeTimeout(ack.timeStamp, ack.acknowledgment-1);
                 lock.lock();
                 inTransit.remove((ack.acknowledgment - 1));
                 ackNum++;
@@ -116,8 +112,7 @@ public class TCP_send extends Thread {
         socket.receive(packet);
         TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, null, "E");
         ack = ack.deserialize(packet.getData());
-        System.out.println("\t\t\t\t\t\tRTT in RECV" + (System.nanoTime() - ack.timeStamp));
-        computeTimeout(ack.timeStamp, ack.acknowledgment-1);
+        //System.out.println("\t\t\t\t\t\tRTT in RECV" + (System.nanoTime() - ack.timeStamp));
         //System.out.println("Recving_______________");
         //System.out.println(ack.toString() + "\n");
         return ack;
@@ -132,20 +127,20 @@ public class TCP_send extends Thread {
             this.EDEV = 0L;
             this.timeout = 2L * this.ERTT;
         } else {
-            System.out.println("computeTimeout________________");
+           // System.out.println("computeTimeout________________");
             long SRTT = System.nanoTime() - timestamp;
-            System.out.println("SRTT: " + SRTT);
-            System.out.println("ERTT before: " + ERTT);
+           // System.out.println("SRTT: " + SRTT);
+           // System.out.println("ERTT before: " + ERTT);
             long SDEV = Math.abs(SRTT - this.ERTT);
-            System.out.println("SDEV: " + SDEV);
+           // System.out.println("SDEV: " + SDEV);
             this.ERTT = (long) (a * this.ERTT) + (long) ((1 - a) * SRTT);
-            System.out.println("ERTT: " + this.ERTT);
+           // System.out.println("ERTT: " + this.ERTT);
             this.EDEV = (long) (b * this.EDEV) + (long) ((1 - b) * SDEV);
-            System.out.println("EDEV: " + EDEV);
+           // System.out.println("EDEV: " + EDEV);
             this.timeout = this.ERTT + (4L * this.EDEV);
-            System.out.println("timeout: " + this.timeout);
+           // System.out.println("timeout: " + this.timeout);
         }
-        System.out.println("TIMEOUT TIME: " + this.timeout);
+       // System.out.println("TIMEOUT TIME: " + this.timeout);
     }
     public long getTimeout(){return this.timeout;}
 }
@@ -168,25 +163,35 @@ class SendDataRunnable implements Runnable{
                 lock.lock();
                 if (inTransit.size() < sender.sws) {
                     segmArr[segsSent].setTimeStamp(System.nanoTime());
-                    sender.sendData(segmArr[segsSent]);
                     segmArr[segsSent].startTimer(sender);
+                    sender.sendData(segmArr[segsSent]);
+                    System.out.println("snd " + System.nanoTime()/1000000000 + " " + segmArr[segsSent].getFlag() +
+                            " "+ segmArr[segsSent].getSequence()+" "+ segmArr[segsSent].getData().length + " "+ segmArr[segsSent].getAcknowlegment());
                     inTransit.put(segmArr[segsSent].sequence, segmArr[segsSent]);
                     segsSent++;
                 }
-                        for(HashMap.Entry<Integer, TCP_segm> entry : inTransit.entrySet()) {
-                            if((System.nanoTime() - entry.getValue().timeStamp) > timeout){
-                                inTransit.remove(entry);
-                                entry.getValue().setTimeStamp(System.nanoTime());
-                                sendData(entry.getValue());
-                                inTransit.put(entry.getValue().sequence, entry.getValue());
-                            }
-                        }
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
                 lock.unlock();
             }
         }
+    }
+}
+
+class Retransmit implements Runnable{
+    protected TCP_segm[] segmArr;
+    protected TCP_send sender;
+    ReentrantLock lock;
+    HashMap<Integer, TCP_segm> inTransit;
+    public Retransmit(TCP_segm[] segmArr, TCP_send sender, ReentrantLock lock, HashMap<Integer, TCP_segm> inTransit) {
+        this.segmArr = segmArr;
+        this.sender = sender;
+        this.inTransit = inTransit;
+        this.lock = lock;
+    }
+    public void run() {
+
     }
 }
 

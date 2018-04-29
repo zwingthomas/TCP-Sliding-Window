@@ -2,6 +2,7 @@ import java.nio.ByteBuffer;
 import java.text.Format;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 
 public class TCP_segm{
     protected int sequence;
@@ -39,22 +40,22 @@ public class TCP_segm{
         String str = "E"; //E for error
         switch(bits){
             case 0:
-                str = "D";
+                str = "---D";
                 break;
             case 1:
-                str = "A";
+                str = "-A--";
                 break;
             case 2:
-                str = "F";
+                str = "--F-";
                 break;
             case 3:
-                str = "AF";
+                str = "-AF-";
                 break;
             case 4:
-                str = "S";
+                str = "S---";
                 break;
             case 5:
-                str = "AS";
+                str = "SA--";
                 break;
         }
         return str;
@@ -85,7 +86,6 @@ public class TCP_segm{
 
     public String toString(){
         String data = new String(this.data);
-        //TODO: memory error lulz
 
         String str = "Sequence Number: " + this.getSequence() + "\n" +
                     "Acknowledgement Number: " + this.getAcknowlegment() + "\n" +
@@ -207,21 +207,26 @@ public class TCP_segm{
         return stringBuilder.toString();
     }
 
-    public static void startTimer(TCP_send sender){
+    public void startTimer(TCP_send sender){
 
         //begin timer thread
 
         Thread timer = new Thread(new Runnable() {
             @Override
             public void run() {
-                //calculate time
-                if(sender.getTimeout() > this./*This threads time existing*/){
-                    //send signal to host thread to wake up retransmit.
+                //System.out.println("\n\n\nTimer begins: " + sequence + "\n\n\n");
+                while(sender.getTimeout() > (System.nanoTime() - timeStamp)){
+                    //do nothing
+                    //System.out.println(sender.getTimeout() + " > " + (System.nanoTime() - timeStamp));
+                }
+                    System.out.println("!!!!!!!!!!!!!!!!!!!!!!!TIMEOUT: " + sequence + "!!!!!!!!!!!!!!!!!!!!");
                 }
             }
-        }){
+        ){
 
         };
+
+        timer.start();
 
     }
 }
