@@ -16,7 +16,7 @@ public class TCP_send extends Thread {
 
     private Map<Integer, Long> sequence_timeout_map;
     private HashMap<Integer, TCP_segm> inTransit;
-
+    ReentrantLock lock;
 
     //variables for timeOut calculation
     long ERTT;
@@ -38,7 +38,7 @@ public class TCP_send extends Thread {
 
 
         inTransit = new HashMap<>();
-        ReentrantLock lock = new ReentrantLock();
+        lock = new ReentrantLock();
         Thread sendData = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
         //Thread retransmit = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
 
