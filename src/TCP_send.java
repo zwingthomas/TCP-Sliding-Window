@@ -117,7 +117,7 @@ public class TCP_send extends Thread {
         segment.serialize();
         DatagramPacket packet = new DatagramPacket(segment.serialize(), 0, segment.getLength() + 24, this.remote_IP, this.remote_port);
         synchronized(sequence_timeout_map) {
-            sequence_timeout_map.put(segment.sequence, segment.timeStamp + System.nanoTime());
+            sequence_timeout_map.put(segment.sequence, this.timeout + System.nanoTime());
             System.out.println(sequence_timeout_map.toString());
         }
         //System.out.println("Sending_______________");
