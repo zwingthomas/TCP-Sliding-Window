@@ -32,7 +32,6 @@ public class TCP_send extends Thread {
         this.timeout = 5000000000L;
         this.sws = sws;
         this.file_name = file_name;
-        this.sequence_timeout_map = Collections.synchronizedMap(new HashMap<Integer, Long>());
     }
 
     public void send(ArrayList<TCP_segm> segmArr) throws InterruptedException {
@@ -43,19 +42,21 @@ public class TCP_send extends Thread {
         Thread sendData = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
         //Thread retransmit = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
 
+        sequence_timeout_map = Collections.synchronizedMap(new HashMap<Integer, Long>());
+
         Timer t = new Timer(true);
 
         t.scheduleAtFixedRate(
                 new TimerTask() {
                     public void run() {
-                        if (inTransit.size() > 0)
+                        if(inTransit.size() > 0)
                             check_old_timestamps(inTransit, lock);
                     }
                 }
                 , 0, 1);
 
-
         sendData.start();
+
 
         int ackNum = 0;
         while (ackNum < segmArr.size()) {
@@ -63,57 +64,52 @@ public class TCP_send extends Thread {
                 TCP_segm ack = receiveAck();
                 computeTimeout(ack.timeStamp, ack.acknowledgment - 1);
 
-                synchronized (sequence_timeout_map) {
+                synchronized(sequence_timeout_map) {
                     sequence_timeout_map.remove(ack.acknowledgment - 1);
                 }
+                lock.lock();
+                inTransit.remove((ack.acknowledgment - 1));
                 ackNum++;
             } catch (IOException e) {
                 e.printStackTrace();
+            } finally {
+                lock.unlock();
             }
         }
         sendData.join();
-
     }
 
-    public void handshake(int initSeqNum) {
+    public void handshake(int initSeqNum) throws IOException {
         //Send SYN
-        try {
-            byte[] buf = new byte[0];
-            TCP_segm syn = new TCP_segm(initSeqNum, 0, System.nanoTime(), 0, (short) 0, buf, "S");
-            sendData(syn);
+        byte[] buf = new byte[0];
+        TCP_segm syn = new TCP_segm(initSeqNum, 0, System.nanoTime(), 0, (short) 0, buf, "S");
+        sendData(syn);
 
-            //Receive SYNACK
-            TCP_segm ack = receiveAck();
+        //Receive SYNACK
+        TCP_segm ack = receiveAck();
 
-            //Send ACK
-            TCP_segm tcpSegm = new TCP_segm(initSeqNum + 1, 0, System.nanoTime(), 0, (short) 0, buf, "A");
-            sendData(tcpSegm);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        //Send ACK
+        TCP_segm tcpSegm = new TCP_segm(initSeqNum + 1, 0, System.nanoTime(), 0, (short) 0, buf, "A");
+        sendData(tcpSegm);
     }
 
-    public void connectionTeardown() {
+    public void connectionTeardown() throws IOException {
         //Send FIN
-        try {
-            byte[] buf = file_name.getBytes();
-            TCP_segm finalSeg = new TCP_segm(this.sequenceSender, 0, System.nanoTime(), file_name.length(), (short) 0, buf, "F");
-            sendData(finalSeg);
+        byte[] buf = file_name.getBytes();
+        TCP_segm finalSeg = new TCP_segm(this.sequenceSender, 0, System.nanoTime(), file_name.length(), (short) 0, buf, "F");
+        sendData(finalSeg);
 
-            //Receive ACK
-            TCP_segm ack = receiveAck();
+        //Receive ACK
+        TCP_segm ack = receiveAck();
 
-            //Receive FINACK
-            TCP_segm finAck = receiveAck();
+        //Receive FINACK
+        TCP_segm finAck = receiveAck();
 
-            //Send ack
-            buf = new byte[0];
-            TCP_segm tcpSegm = new TCP_segm(finAck.sequence + 1, 0, System.nanoTime(), 0, (short) 0, buf, "A");
-            sendData(tcpSegm);
-            System.exit(0);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        //Send ack
+        buf = new byte[0];
+        TCP_segm tcpSegm = new TCP_segm(finAck.sequence + 1, 0, System.nanoTime(), 0, (short) 0, buf, "A");
+        sendData(tcpSegm);
+        System.exit(0);
 
     }
 
@@ -121,7 +117,7 @@ public class TCP_send extends Thread {
         segment.setTimeStamp(System.nanoTime());
         segment.serialize();
         DatagramPacket packet = new DatagramPacket(segment.serialize(), 0, segment.getLength() + 24, this.remote_IP, this.remote_port);
-        synchronized (sequence_timeout_map) {
+        synchronized(sequence_timeout_map) {
             sequence_timeout_map.put(segment.sequence, this.timeout + System.nanoTime());
         }
         //System.out.println("Sending_______________");
@@ -129,7 +125,6 @@ public class TCP_send extends Thread {
         socket.send(packet);
         System.out.println("snd " + System.nanoTime() / 1000000000 + " " + segment.getFlag() +
                 " " + segment.getSequence() + " " + segment.getData().length + " " + segment.getAcknowlegment());
-        inTransit.put(segment.sequence, segment);
     }
 
     public TCP_segm receiveAck() throws IOException {
@@ -141,7 +136,6 @@ public class TCP_send extends Thread {
         ack = ack.deserialize(packet.getData());
         System.out.println("rcv " + System.nanoTime() / 1000000000 + " " + ack.getFlag() +
                 " " + ack.getSequence() + " " + ack.getData().length + " " + ack.getAcknowlegment());
-        inTransit.remove((ack.acknowledgment - 1));
         return ack;
     }
 
@@ -164,7 +158,7 @@ public class TCP_send extends Thread {
 
     public void check_old_timestamps(HashMap<Integer, TCP_segm> inTransit, ReentrantLock lock) {
         ArrayList<Integer> to_retransmit = new ArrayList<>();
-        synchronized (sequence_timeout_map) {
+        synchronized(sequence_timeout_map) {
             for (Integer seq_num : sequence_timeout_map.keySet()) {
                 if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
                     System.out.println("TIMEOUT: " + seq_num);
@@ -172,7 +166,7 @@ public class TCP_send extends Thread {
                 }
             }
         }
-        for (Integer seq_num : to_retransmit) {
+        for(Integer seq_num : to_retransmit) {
             lock.lock();
             try {
                 inTransit.get(seq_num).setTimeStamp(System.nanoTime());
@@ -203,15 +197,13 @@ class SendDataRunnable implements Runnable {
 
     public void run() {
         int segsSent = 0;
-        lock.lock();
-        sender.handshake(0);
-        lock.unlock();
         while (segsSent < segmArr.size()) {
             try {
                 lock.lock();
                 if (inTransit.size() < sender.sws) {
                     segmArr.get(segsSent).setTimeStamp(System.nanoTime());
                     sender.sendData(segmArr.get(segsSent));
+                    inTransit.put(segmArr.get(segsSent).sequence, segmArr.get(segsSent));
                     segsSent++;
                 }
             } catch (IOException e) {
@@ -220,9 +212,6 @@ class SendDataRunnable implements Runnable {
                 lock.unlock();
             }
         }
-        lock.lock();
-        sender.connectionTeardown();
-        lock.unlock();
     }
 }
 

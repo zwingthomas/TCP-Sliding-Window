@@ -73,7 +73,7 @@ public class TCPend {
                 byte[] dataToBeSent;
                 if(segCnt == neededNumOfSegments - 1)
                     dataToBeSent = new byte[data.length - 1 - totalBytesLoaded];
-                 else
+                else
                     dataToBeSent = new byte[mtu-24];
                 int dataLoadedForSeg;
                 for(dataLoadedForSeg = 0; dataLoadedForSeg < (mtu-24) && totalBytesLoaded < data.length-1; dataLoadedForSeg++) {
@@ -85,9 +85,12 @@ public class TCPend {
                 toSend.get(segCnt).serialize(); //computes the checksum
             }
 
+
             TCP_send sender = new TCP_send(socket, remote_IP, remote_port, sws, 'D', file_name);
             //TODO: watch out for dropped handshake packets
+            sender.handshake(0);
             sender.send(toSend);
+            sender.connectionTeardown();
         }
 
         //for Receiver
