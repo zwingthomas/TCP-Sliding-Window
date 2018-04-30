@@ -62,11 +62,6 @@ public class TCP_send extends Thread {
         while (ackNum < segmArr.size()) {
             try {
                 TCP_segm ack = receiveAck();
-                computeTimeout(ack.timeStamp, ack.acknowledgment - 1);
-
-                synchronized (sequence_timeout_map) {
-                    sequence_timeout_map.remove(ack.acknowledgment - 1);
-                }
                 lock.lock();
                 inTransit.remove((ack.acknowledgment - 1));
                 ackNum++;
@@ -146,6 +141,11 @@ public class TCP_send extends Thread {
         ack = ack.deserialize(packet.getData());
         System.out.println("rcv " + System.nanoTime() / 1000000000 + " " + ack.getFlag() +
                 " " + ack.getSequence() + " " + ack.getData().length + " " + ack.getAcknowlegment());
+        computeTimeout(ack.timeStamp, ack.acknowledgment - 1);
+
+        synchronized (sequence_timeout_map) {
+            sequence_timeout_map.remove(ack.acknowledgment - 1);
+        }
         return ack;
     }
 
