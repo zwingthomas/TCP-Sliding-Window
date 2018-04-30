@@ -32,6 +32,7 @@ public class TCP_send extends Thread {
         this.timeout = 5000000000L;
         this.sws = sws;
         this.file_name = file_name;
+        this.sequence_timeout_map = Collections.synchronizedMap(new HashMap<Integer, Long>());
     }
 
     public void send(ArrayList<TCP_segm> segmArr) throws InterruptedException {
@@ -41,8 +42,6 @@ public class TCP_send extends Thread {
         lock = new ReentrantLock();
         Thread sendData = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
         //Thread retransmit = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
-
-        sequence_timeout_map = Collections.synchronizedMap(new HashMap<Integer, Long>());
 
         Timer t = new Timer(true);
 
