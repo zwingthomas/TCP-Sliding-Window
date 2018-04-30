@@ -38,7 +38,7 @@ public class TCP_recv {
 
             //Checking for out of order packets
             Integer acknowledgment = recv.sequence + 1;
-            if(recv.sequence != nextExpectedSeq){
+            if(recv.sequence != nextExpectedSeq && nextExpectedSeq != -1){
                 desiredSeq.add(nextExpectedSeq);
                 acknowledgment = desiredSeq.get(0) + 1;
             }
