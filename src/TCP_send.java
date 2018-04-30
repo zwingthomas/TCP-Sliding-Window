@@ -15,6 +15,8 @@ public class TCP_send extends Thread {
     private int sequenceSender;
 
     private Map<Integer, Long> sequence_timeout_map;
+    private HashMap<Integer, TCP_segm> inTransit;
+
 
     //variables for timeOut calculation
     long ERTT;
@@ -34,12 +36,13 @@ public class TCP_send extends Thread {
 
     public void send(ArrayList<TCP_segm> segmArr) throws InterruptedException {
 
-        HashMap<Integer, TCP_segm> inTransit = new HashMap<>();
+
+        inTransit = new HashMap<>();
         ReentrantLock lock = new ReentrantLock();
         Thread sendData = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
         //Thread retransmit = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
 
-        sequence_timeout_map = Collections.synchronizedMap(new HashMap<>());
+        sequence_timeout_map = Collections.synchronizedMap(new HashMap<Integer, Long>());
 
         Timer t = new Timer(true);
 
