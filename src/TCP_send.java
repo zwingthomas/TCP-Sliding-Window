@@ -15,7 +15,7 @@ public class TCP_send extends Thread {
     private int sequenceSender;
 
     private Map<Integer, Long> sequence_timeout_map;
-    private HashMap<Integer, TCP_segm> inTransit;
+    private HashMap<Integer, TCP_segm> inTransit = new HashMap<>();
     ReentrantLock lock;
 
     //variables for timeOut calculation
