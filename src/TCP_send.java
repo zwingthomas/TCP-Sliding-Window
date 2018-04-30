@@ -61,8 +61,6 @@ public class TCP_send extends Thread {
         while (ackNum < segmArr.size()) {
             try {
                 TCP_segm ack = receiveAck();
-                System.out.println("rcv " + System.nanoTime() / 1000000000 + " " + ack.getFlag() +
-                        " " + ack.getSequence() + " " + ack.getData().length + " " + ack.getAcknowlegment());
                 computeTimeout(ack.timeStamp, ack.acknowledgment - 1);
 
 //                sequence_timeout_map.get(ack.acknowledgment - 1);
@@ -123,6 +121,8 @@ public class TCP_send extends Thread {
         //System.out.println("Sending_______________");
         //System.out.println(segment.toString() + "\n");
         socket.send(packet);
+        System.out.println("snd " + System.nanoTime() / 1000000000 + " " + segment.getFlag() +
+                " " + segment.getSequence() + " " + segment.getData().length + " " + segment.getAcknowlegment());
     }
 
     public void sendNoData(String flag, int seqNum) throws IOException {
@@ -142,6 +142,8 @@ public class TCP_send extends Thread {
         socket.receive(packet);
         TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, null, "E");
         ack = ack.deserialize(packet.getData());
+        System.out.println("rcv " + System.nanoTime() / 1000000000 + " " + ack.getFlag() +
+                " " + ack.getSequence() + " " + ack.getData().length + " " + ack.getAcknowlegment());
         //System.out.println("\t\t\t\t\t\tRTT in RECV" + (System.nanoTime() - ack.timeStamp));
         //System.out.println("Recving_______________");
         //System.out.println(ack.toString() + "\n");
@@ -180,6 +182,7 @@ public class TCP_send extends Thread {
                 if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
                     try {
                         System.out.println("TIMEOUT: " + seq_num);
+                        System.out.println("Segment: " + inTransit.get(seq_num).toString());
                         sendData(inTransit.get(seq_num));
                         inTransit.put(seq_num, inTransit.get(seq_num));
                     } catch (IOException e) {
@@ -214,8 +217,6 @@ class SendDataRunnable implements Runnable {
                     segmArr.get(segsSent).setTimeStamp(System.nanoTime());
                     //segmArr[segsSent].startTimer(sender);
                     sender.sendData(segmArr.get(segsSent));
-                    System.out.println("snd " + System.nanoTime() / 1000000000 + " " + segmArr.get(segsSent).getFlag() +
-                            " " + segmArr.get(segsSent).getSequence() + " " + segmArr.get(segsSent).getData().length + " " + segmArr.get(segsSent).getAcknowlegment());
                     inTransit.put(segmArr.get(segsSent).sequence, segmArr.get(segsSent));
                     segsSent++;
                 }
