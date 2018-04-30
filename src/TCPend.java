@@ -3,6 +3,7 @@ import java.net.DatagramSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 
 public class TCPend {
     public static void main(String args[]) throws IOException, InterruptedException {
@@ -62,13 +63,12 @@ public class TCPend {
             //send first SYN packet
             //TCP_send();
 
-
             //put data to be sent into a smaller container for transmission
             int seqNum = 1; //sequence number starts at 1 due to handshake
             int totalBytesLoaded = 0;
             int neededNumOfSegments = (int)Math.ceil((double)data.length/(double)(mtu - 24));
             DatagramSocket socket = new DatagramSocket(port);
-            TCP_segm toSend[] = new TCP_segm[neededNumOfSegments];
+            ArrayList<TCP_segm> toSend = new ArrayList<TCP_segm>();
             for(int segCnt = 0; segCnt < neededNumOfSegments; segCnt++){
                 byte[] dataToBeSent;
                 if(segCnt == neededNumOfSegments - 1)
@@ -81,10 +81,9 @@ public class TCPend {
                     totalBytesLoaded++;
                 }
                 seqNum += dataLoadedForSeg;
-                toSend[segCnt] = new TCP_segm(seqNum, 0, System.nanoTime(), dataLoadedForSeg, (short) 0, dataToBeSent, "D");
-                toSend[segCnt].serialize(); //computes the checksum
+                toSend.add(new TCP_segm(seqNum, 0, System.nanoTime(), dataLoadedForSeg, (short) 0, dataToBeSent, "D"));
+                toSend.get(segCnt).serialize(); //computes the checksum
             }
-
 
             TCP_send sender = new TCP_send(socket, remote_IP, remote_port, sws, 'D', file_name);
             //TODO: watch out for dropped handshake packets
