@@ -57,7 +57,6 @@ public class TCP_send extends Thread {
 
         sendData.start();
 
-
         int ackNum = 0;
         while (ackNum < segmArr.size()) {
             try {
@@ -67,13 +66,9 @@ public class TCP_send extends Thread {
                 synchronized (sequence_timeout_map) {
                     sequence_timeout_map.remove(ack.acknowledgment - 1);
                 }
-                lock.lock();
-                inTransit.remove((ack.acknowledgment - 1));
                 ackNum++;
             } catch (IOException e) {
                 e.printStackTrace();
-            } finally {
-                lock.unlock();
             }
         }
         sendData.join();
@@ -134,6 +129,7 @@ public class TCP_send extends Thread {
         socket.send(packet);
         System.out.println("snd " + System.nanoTime() / 1000000000 + " " + segment.getFlag() +
                 " " + segment.getSequence() + " " + segment.getData().length + " " + segment.getAcknowlegment());
+        inTransit.put(segment.sequence, segment);
     }
 
     public TCP_segm receiveAck() throws IOException {
@@ -145,6 +141,7 @@ public class TCP_send extends Thread {
         ack = ack.deserialize(packet.getData());
         System.out.println("rcv " + System.nanoTime() / 1000000000 + " " + ack.getFlag() +
                 " " + ack.getSequence() + " " + ack.getData().length + " " + ack.getAcknowlegment());
+        inTransit.remove((ack.acknowledgment - 1));
         return ack;
     }
 
@@ -206,14 +203,15 @@ class SendDataRunnable implements Runnable {
 
     public void run() {
         int segsSent = 0;
+        lock.lock();
         sender.handshake(0);
+        lock.unlock();
         while (segsSent < segmArr.size()) {
             try {
                 lock.lock();
                 if (inTransit.size() < sender.sws) {
                     segmArr.get(segsSent).setTimeStamp(System.nanoTime());
                     sender.sendData(segmArr.get(segsSent));
-                    inTransit.put(segmArr.get(segsSent).sequence, segmArr.get(segsSent));
                     segsSent++;
                 }
             } catch (IOException e) {
@@ -222,7 +220,9 @@ class SendDataRunnable implements Runnable {
                 lock.unlock();
             }
         }
+        lock.lock();
         sender.connectionTeardown();
+        lock.unlock();
     }
 }
 
