@@ -99,7 +99,6 @@ public class TCP_segm{
 
 
     public byte[] serialize(){
-//        System.out.println("Serialized Length: " + this.getLength());
         byte[] data = new byte[this.getLength() + 24]; // add 24 for the header
         ByteBuffer bb = ByteBuffer.wrap(data);
         bb.putInt(this.sequence);                     //index: 0 - 3
@@ -116,7 +115,6 @@ public class TCP_segm{
     }
 
     public TCP_segm deserialize(byte[] data){
-//        System.out.println("Length of Data Packet: " + data.length);
         ByteBuffer bb = ByteBuffer.wrap(data, 0, data.length);
         this.sequence = bb.getInt();
         this.acknowledgment = bb.getInt();
@@ -126,11 +124,9 @@ public class TCP_segm{
         assert(allZeros == 0);
         this.checksum = bb.getShort();
         this.data = new byte[this.getLength()];
-//        System.out.println("Length in deserialize: " + this.getLength());
         for(int i = 0; i < this.getLength(); i++) {
             this.data[i] = bb.get();
             String str = new String(this.data);
-            //System.out.println("STRING: " + str + "\tITER:" + i);
         }
 
         return this;
@@ -207,23 +203,4 @@ public class TCP_segm{
         return stringBuilder.toString();
     }
 
-//    public void startTimer(final TCP_send sender){
-//
-//        //begin timer thread
-//        Thread timer = new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                //System.out.println("\n\n\nTimer begins: " + sequence + "\n\n\n");
-//                while(sender.getTimeout() > (System.nanoTime() - timeStamp)){
-//                    //do nothing
-//                    //System.out.println(sender.getTimeout() + " > " + (System.nanoTime() - timeStamp));
-//                }
-//                    System.out.println("!!!!!!!!!!!!!!!!!!!!!!!TIMEOUT: " + sequence + "!!!!!!!!!!!!!!!!!!!!");
-//                }
-//            }
-//        ){
-//
-//        };
-//        timer.start();
-//    }
 }

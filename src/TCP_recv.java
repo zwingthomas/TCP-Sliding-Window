@@ -13,7 +13,6 @@ public class TCP_recv {
     private int sws;
     private int senderPort;
     private InetAddress senderIP;
-    private int senderSeqNum;
     private String fileName;
 
     public TCP_recv(DatagramSocket socket, int mtu, int sws) {
@@ -23,21 +22,13 @@ public class TCP_recv {
     }
 
     public void receive() throws IOException {
-        int nextExpectedSeq = -1;
-        int prevAck = -1;
         int acknowledgment;
-        byte[] buf = new byte[this.mtu];
         boolean running = true;
 
         HashMap<Integer, byte[]> dataBuf = new HashMap<>();
-        ArrayList<TCP_segm> history = new ArrayList<TCP_segm>();
-        TCP_segm prev = new TCP_segm(0, 0, 0, 0, (short) 0, null, "E");;
 
-        //TODO: implement triple duplicate ACKS
         while (running) {
-
             TCP_segm recv = receiveData();  //receive the data
-
             acknowledgment = recv.getSequence() + 1;
 
             //Fast Retransmit in the case that the checksums do not match
@@ -79,13 +70,13 @@ public class TCP_recv {
     public void handshake(int initSeqNum) throws IOException {
         TCP_segm recv;
         recv = receiveData();                                   //receive SYN
-        sendAck("SA", 500, recv.sequence, recv.timeStamp);      //Send SYNACK
+        sendAck("SA", 0, recv.sequence+1, recv.timeStamp);      //Send SYNACK
         receiveData();                                          //Receive ACK
     }
 
     public void connectionTeardown(TCP_segm recv) throws IOException {
-        sendAck("A", 0, recv.sequence, recv.timeStamp);       //Send ACK
-        sendAck("FA", 501,recv.sequence + 1, System.nanoTime()); //Send FIN + ACK
+        sendAck("A", 0, recv.sequence + 1, recv.timeStamp);       //Send ACK
+        sendAck("FA", 1,recv.sequence + 1, System.nanoTime()); //Send FIN + ACK
         receiveData();                                          //Receive ACK
     }
 
@@ -116,8 +107,6 @@ public class TCP_recv {
         System.out.println("snd " + System.nanoTime() / 1000000000 + " " + send.getFlag() +
                 " " + send.getSequence() + " " + send.getData().length + " " + send.getAcknowlegment());
     }
-
-
 }
 
 

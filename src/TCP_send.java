@@ -26,6 +26,16 @@ public class TCP_send extends Thread {
     //handshake and teardown variables
     boolean handshake_complete = false;
     boolean teardown_complete = false;
+    int last_seqNum = 0;
+
+    //variables for output
+    int data = 0;
+    int packets_sent = 0;
+    int packets_discarded = 0;
+    int packets_discarded_checksum = 0;
+    int retransmissions = 0;
+    int dup_acknowledgements = 0;
+
 
     public TCP_send(DatagramSocket socket, String remote_IP, int remote_port, int sws, char flag, String file_name) throws UnknownHostException {
         this.socket = socket;
@@ -44,7 +54,6 @@ public class TCP_send extends Thread {
         inTransit = new HashMap<>();
         lock = new ReentrantLock();
         Thread sendData = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
-        //Thread retransmit = new Thread(new SendDataRunnable(segmArr, this, lock, inTransit));
 
         sequence_timeout_map = Collections.synchronizedMap(new HashMap<Integer, Long>());
 
@@ -61,14 +70,12 @@ public class TCP_send extends Thread {
 
         sendData.start();
 
-
+        int actual_ackNum = 0;
         HashMap<Integer, Integer> ackNum = new HashMap<>();
         while (ackNum.size() < segmArr.size()) {
-//            System.out.println("HELLOOOOO!");
-//            System.out.println(ackNum.size());
-//            System.out.println(segmArr.size());
             try {
                 TCP_segm ack = receiveAck();
+                actual_ackNum += 1;
                 computeTimeout(ack.timeStamp, ack.acknowledgment - 1);
 
                 synchronized(sequence_timeout_map) {
@@ -84,6 +91,7 @@ public class TCP_send extends Thread {
             }
         }
         sendData.join();
+        dup_acknowledgements = actual_ackNum - ackNum.size();
     }
 
     int initialSeqNum = 0;
@@ -100,7 +108,7 @@ public class TCP_send extends Thread {
                     TCP_segm ack = receiveAck();
 
                     //Send ACK
-                    sendNoData("A",  initialSeqNum + 1);
+                    sendNoData("A",  1);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -145,13 +153,14 @@ public class TCP_send extends Thread {
             long time_sent = System.nanoTime();
             //Send FIN
             byte[] buf = file_name.getBytes();
-            TCP_segm finalSeg = new TCP_segm(this.sequenceSender, 0, System.nanoTime(), file_name.length(), (short) 0, buf, "F");
+            TCP_segm finalSeg = new TCP_segm(last_seqNum + buf.length, 0, System.nanoTime(), file_name.length(), (short) 0, buf, "F");
             sendData(finalSeg);
             while(time_sent + timeout > System.nanoTime() && !teardown_complete){
                 //donothing
             }
         }
 
+        end_prints();
         System.exit(0);
     }
 
@@ -169,10 +178,10 @@ public class TCP_send extends Thread {
                 " " + segment.getSequence() + " " + segment.getData().length + " " + segment.getAcknowlegment());
     }
 
-    public void sendNoData(String flag, int seqNum) throws IOException {
+    public void sendNoData(String flag, int ackNum) throws IOException {
         int size = 0;
         byte[] buf = new byte[size];
-        TCP_segm segment = new TCP_segm(seqNum, 0, System.nanoTime(), 0, (short) 0, buf, flag);
+        TCP_segm segment = new TCP_segm(0, ackNum, System.nanoTime(), 0, (short) 0, buf, flag);
         segment.serialize();
         DatagramPacket packet = new DatagramPacket(segment.serialize(), 0, segment.getLength() + 24, this.remote_IP, this.remote_port);
         socket.send(packet);
@@ -192,7 +201,6 @@ public class TCP_send extends Thread {
     }
 
     public void computeTimeout(long timestamp, int sequenceNum) {
-        //System.out.println("/t/t/t/t/tCOMPUTE TIMEOUT CALLED: " + timestamp + " || " + sequenceNum);
         double a = 0.875;
         double b = 0.75;
         if (sequenceNum == 0) {
@@ -213,8 +221,9 @@ public class TCP_send extends Thread {
         synchronized(sequence_timeout_map) {
             for (Integer seq_num : sequence_timeout_map.keySet()) {
                 if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
-                    System.out.println("TIMEOUT: " + seq_num);
                     to_retransmit.add(seq_num);
+                    packets_discarded += 1;
+                    retransmissions += 1;
                 }
             }
         }
@@ -230,6 +239,15 @@ public class TCP_send extends Thread {
             lock.unlock();
         }
 
+    }
+
+    public void end_prints(){
+        System.out.println("\nAmount of Data Transferred/Received: " + data);
+        System.out.println("No of Packets Sent/Received: " + packets_sent);
+        System.out.println("No of Packets Discarded (Out Of Seq): " + packets_discarded);
+        System.out.println("No of Packets Discarded (Checksum): " + packets_discarded_checksum);
+        System.out.println("No of Retransmissions: " + retransmissions);
+        System.out.println("No of Duplicate Acknowledgements: " + dup_acknowledgements);
     }
 
 }
@@ -253,8 +271,9 @@ class SendDataRunnable implements Runnable {
             try {
                 lock.lock();
                 if (inTransit.size() < sender.sws) {
+                    sender.data += segmArr.get(segsSent).getData().length;
+                    sender.packets_sent += 1;
                     segmArr.get(segsSent).setTimeStamp(System.nanoTime());
-                    //segmArr[segsSent].startTimer(sender);
                     sender.sendData(segmArr.get(segsSent));
                     inTransit.put(segmArr.get(segsSent).sequence, segmArr.get(segsSent));
                     segsSent++;
@@ -265,6 +284,7 @@ class SendDataRunnable implements Runnable {
                 lock.unlock();
             }
         }
+        sender.last_seqNum = segmArr.get(segsSent - 1).sequence;
     }
 }
 

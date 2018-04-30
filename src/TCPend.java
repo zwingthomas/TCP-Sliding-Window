@@ -81,7 +81,7 @@ public class TCPend {
                     totalBytesLoaded++;
                 }
                 seqNum += dataLoadedForSeg;
-                toSend.add(new TCP_segm(seqNum, 0, System.nanoTime(), dataLoadedForSeg, (short) 0, dataToBeSent, "D"));
+                toSend.add(new TCP_segm(seqNum, 1, System.nanoTime(), dataLoadedForSeg, (short) 0, dataToBeSent, "D"));
                 toSend.get(segCnt).serialize(); //computes the checksum
             }
 
@@ -89,7 +89,6 @@ public class TCPend {
             //TODO: watch out for dropped handshake packets
             sender.handshake(0);
             sender.send(toSend);
-            System.out.println("\t\t\t\t\t\t\t\tBEGIN TEARDOWN");
             sender.connectionTeardown();
         }
 
