@@ -118,6 +118,7 @@ public class TCP_send extends Thread {
         DatagramPacket packet = new DatagramPacket(segment.serialize(), 0, segment.getLength() + 24, this.remote_IP, this.remote_port);
         synchronized(sequence_timeout_map) {
             sequence_timeout_map.put(segment.sequence, segment.timeStamp + System.nanoTime());
+            System.out.println(sequence_timeout_map.toString());
         }
         //System.out.println("Sending_______________");
         //System.out.println(segment.toString() + "\n");
@@ -178,6 +179,7 @@ public class TCP_send extends Thread {
             for (Integer seq_num : sequence_timeout_map.keySet()) {
                 if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
                     try {
+                        System.out.println("TIMEOUT: " + seq_num);
                         sendData(inTransit.get(seq_num));
                         inTransit.put(seq_num, inTransit.get(seq_num));
                     } catch (IOException e) {
