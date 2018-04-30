@@ -58,9 +58,9 @@ public class TCP_recv {
                 this.fileName = new String(recv.getData());
                 connectionTeardown(recv);
                 running = false;
+                break;
             }
 
-            //TODO: manage TimeOut and SequenceNumber
             sendAck("A", 0, acknowledgment, recv.timeStamp);
 
         }

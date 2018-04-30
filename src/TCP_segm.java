@@ -88,12 +88,12 @@ public class TCP_segm{
         String data = new String(this.data);
 
         String str = "Sequence Number: " + this.getSequence() + "\n" +
-                    "Acknowledgement Number: " + this.getAcknowlegment() + "\n" +
-                    "TimeStamp: " + this.timeStamp + "\n" +
-                    "Length: " + this.getLength() + "\n" +
-                    "Checksum: " + this.checksum + "\n" +
-                    "Data: " + data + "\n" +
-                    "Flag:" + this.getFlag();
+                "Acknowledgement Number: " + this.getAcknowlegment() + "\n" +
+                "TimeStamp: " + this.timeStamp + "\n" +
+                "Length: " + this.getLength() + "\n" +
+                "Checksum: " + this.checksum + "\n" +
+                "Data: " + data + "\n" +
+                "Flag:" + this.getFlag();
         return str;
     }
 

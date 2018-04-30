@@ -23,6 +23,10 @@ public class TCP_send extends Thread {
     long EDEV;
     private long timeout;
 
+    //handshake and teardown variables
+    boolean handshake_complete = false;
+    boolean teardown_complete = false;
+
     public TCP_send(DatagramSocket socket, String remote_IP, int remote_port, int sws, char flag, String file_name) throws UnknownHostException {
         this.socket = socket;
         InetAddress addr = InetAddress.getByName(remote_IP);
@@ -58,8 +62,11 @@ public class TCP_send extends Thread {
         sendData.start();
 
 
-        int ackNum = 0;
-        while (ackNum < segmArr.size()) {
+        HashMap<Integer, Integer> ackNum = new HashMap<>();
+        while (ackNum.size() < segmArr.size()) {
+//            System.out.println("HELLOOOOO!");
+//            System.out.println(ackNum.size());
+//            System.out.println(segmArr.size());
             try {
                 TCP_segm ack = receiveAck();
                 computeTimeout(ack.timeStamp, ack.acknowledgment - 1);
@@ -69,7 +76,7 @@ public class TCP_send extends Thread {
                 }
                 lock.lock();
                 inTransit.remove((ack.acknowledgment - 1));
-                ackNum++;
+                ackNum.put(ack.acknowledgment, ack.acknowledgment);
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
@@ -80,33 +87,68 @@ public class TCP_send extends Thread {
     }
 
     public void handshake(int initSeqNum) throws IOException {
-        //Send SYN
-        sendNoData("S", initSeqNum);
 
-        //Receive SYNACK
-        TCP_segm ack = receiveAck();
+        Thread receiveHandshake = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try{
+                    //Receive SYNACK
+                    TCP_segm ack = receiveAck();
 
-        //Send ACK
-        sendNoData("A", initSeqNum + 1);
+                    //Send ACK
+                    sendNoData("A", initSeqNum + 1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                handshake_complete = true;
+            }
+        });
 
+        receiveHandshake.start();
+
+        while(!handshake_complete) {
+            long time_sent = System.nanoTime();
+            sendNoData("S", 0);
+            while(time_sent + timeout > System.nanoTime() && !handshake_complete){
+                //donothing
+            }
+        }
     }
 
     public void connectionTeardown() throws IOException {
-        //Send FIN
-        byte[] buf = file_name.getBytes();
-        TCP_segm finalSeg = new TCP_segm(this.sequenceSender, 0, System.nanoTime(), file_name.length(), (short) 0, buf, "F");
-        sendData(finalSeg);
+        Thread receiveTeardown = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try{
+                    //Receive ACK
+                    TCP_segm ack = receiveAck();
 
-        //Receive ACK
-        TCP_segm ack = receiveAck();
+                    //Receive FINACK
+                    TCP_segm finAck = receiveAck();
 
-        //Receive FINACK
-        TCP_segm finAck = receiveAck();
+                    //Send ack
+                    sendNoData("A", finAck.sequence + 1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                teardown_complete = true;
+            }
+        });
 
-        //Send ack
-        sendNoData("A", finAck.sequence + 1);
+        receiveTeardown.start();
+
+        while(!teardown_complete) {
+            long time_sent = System.nanoTime();
+            //Send FIN
+            byte[] buf = file_name.getBytes();
+            TCP_segm finalSeg = new TCP_segm(this.sequenceSender, 0, System.nanoTime(), file_name.length(), (short) 0, buf, "F");
+            sendData(finalSeg);
+            while(time_sent + timeout > System.nanoTime() && !teardown_complete){
+                //donothing
+            }
+        }
+
         System.exit(0);
-
     }
 
     public void sendData(TCP_segm segment) throws IOException {
@@ -126,18 +168,17 @@ public class TCP_send extends Thread {
     public void sendNoData(String flag, int seqNum) throws IOException {
         int size = 0;
         byte[] buf = new byte[size];
-        TCP_segm tcpSegm = new TCP_segm(seqNum, 0, System.nanoTime(), 0, (short) 0, buf, flag);
-        tcpSegm.serialize();
-        //System.out.println("Sending_______________");
-        //System.out.println(tcpSegm.toString() + "\n");
-        DatagramPacket packet = new DatagramPacket(tcpSegm.serialize(), 0, tcpSegm.getLength() + 24, this.remote_IP, this.remote_port);
+        TCP_segm segment = new TCP_segm(seqNum, 0, System.nanoTime(), 0, (short) 0, buf, flag);
+        segment.serialize();
+        DatagramPacket packet = new DatagramPacket(segment.serialize(), 0, segment.getLength() + 24, this.remote_IP, this.remote_port);
         socket.send(packet);
+        System.out.println("snd " + System.nanoTime() / 1000000000 + " " + segment.getFlag() +
+                " " + segment.getSequence() + " " + segment.getData().length + " " + segment.getAcknowlegment());
     }
 
     public TCP_segm receiveAck() throws IOException {
         byte[] buf = new byte[24];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
-        System.out.println("Waiting to receive ack");
         socket.receive(packet);
         TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, null, "E");
         ack = ack.deserialize(packet.getData());
