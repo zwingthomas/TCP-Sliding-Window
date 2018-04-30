@@ -207,25 +207,23 @@ public class TCP_segm{
         return stringBuilder.toString();
     }
 
-    public void startTimer(final TCP_send sender){
-
-        //begin timer thread
-        Thread timer = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                //System.out.println("\n\n\nTimer begins: " + sequence + "\n\n\n");
-                while(sender.getTimeout() > (System.nanoTime() - timeStamp)){
-                    //do nothing
-                    //System.out.println(sender.getTimeout() + " > " + (System.nanoTime() - timeStamp));
-                }
-                    System.out.println("!!!!!!!!!!!!!!!!!!!!!!!TIMEOUT: " + sequence + "!!!!!!!!!!!!!!!!!!!!");
-                }
-            }
-        ){
-
-        };
-
-        timer.start();
-
-    }
+//    public void startTimer(final TCP_send sender){
+//
+//        //begin timer thread
+//        Thread timer = new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                //System.out.println("\n\n\nTimer begins: " + sequence + "\n\n\n");
+//                while(sender.getTimeout() > (System.nanoTime() - timeStamp)){
+//                    //do nothing
+//                    //System.out.println(sender.getTimeout() + " > " + (System.nanoTime() - timeStamp));
+//                }
+//                    System.out.println("!!!!!!!!!!!!!!!!!!!!!!!TIMEOUT: " + sequence + "!!!!!!!!!!!!!!!!!!!!");
+//                }
+//            }
+//        ){
+//
+//        };
+//        timer.start();
+//    }
 }
