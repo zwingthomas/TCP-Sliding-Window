@@ -49,7 +49,7 @@ public class TCP_send extends Thread {
         t.scheduleAtFixedRate(
                 new TimerTask() {
                     public void run() {
-                        check_old_timestamps(inTransit);
+                        check_old_timestamps(inTransit, lock);
                     }
                 }
                 , 0, 1);
@@ -137,6 +137,7 @@ public class TCP_send extends Thread {
     public TCP_segm receiveAck() throws IOException {
         byte[] buf = new byte[24];
         DatagramPacket packet = new DatagramPacket(buf, buf.length);
+        System.out.println("Waiting to receive ack");
         socket.receive(packet);
         TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, null, "E");
         ack = ack.deserialize(packet.getData());
@@ -170,22 +171,28 @@ public class TCP_send extends Thread {
         // System.out.println("TIMEOUT TIME: " + this.timeout);
     }
 
-    public void check_old_timestamps(HashMap<Integer, TCP_segm> inTransit) {
+    public void check_old_timestamps(HashMap<Integer, TCP_segm> inTransit, ReentrantLock lock) {
         ArrayList<Integer> to_retransmit = new ArrayList<>();
         synchronized(sequence_timeout_map) {
             for (Integer seq_num : sequence_timeout_map.keySet()) {
                 if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
-                    try {
                         System.out.println("TIMEOUT: " + seq_num);
                         System.out.println("Segment: " + inTransit.get(seq_num).toString());
-                        sendData(inTransit.get(seq_num));
-                        inTransit.put(seq_num, inTransit.get(seq_num));
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                        to_retransmit.add(seq_num);
                 }
             }
         }
+        for(Integer seq_num : to_retransmit) {
+            lock.lock();
+            try {
+                sendData(inTransit.get(seq_num));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            inTransit.put(seq_num, inTransit.get(seq_num));
+            lock.unlock();
+        }
+
     }
 
 }
