@@ -37,10 +37,10 @@ public class TCP_recv {
             TCP_segm recv = receiveData();  //receive the data
 
             //Checking for out of order packets
-            Integer acknowledgment = recv.sequence + 1;
+            int acknowledgment = recv.sequence + 1;
             if(recv.sequence != nextExpectedSeq && nextExpectedSeq != -1){
                 desiredSeq.add(nextExpectedSeq);
-                acknowledgment = desiredSeq.get(0) + 1;
+                acknowledgment = desiredSeq.get(0);
             }
 
             //Fast Retransmit in the case that the checksums do not match
@@ -67,7 +67,8 @@ public class TCP_recv {
 
             sendAck("A", 0, acknowledgment, recv.timeStamp);
 
-            nextExpectedSeq = acknowledgment + recv.getData().length;
+            nextExpectedSeq = acknowledgment + recv.getData().length - 1;
+            System.out.println("extExpectedSeq: " + nextExpectedSeq);
 
         }
         Writer wr = new FileWriter(fileName + "1");
