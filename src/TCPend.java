@@ -85,11 +85,11 @@ public class TCPend {
                 toSend.get(segCnt).serialize(); //computes the checksum
             }
 
-
             TCP_send sender = new TCP_send(socket, remote_IP, remote_port, sws, 'D', file_name);
             //TODO: watch out for dropped handshake packets
             sender.handshake(0);
             sender.send(toSend);
+            System.out.println("\t\t\t\t\t\t\t\tBEGIN TEARDOWN");
             sender.connectionTeardown();
         }
 
