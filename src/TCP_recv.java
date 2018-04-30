@@ -40,10 +40,13 @@ public class TCP_recv {
             int acknowledgment = recv.sequence + 1;
             desiredSeq.add(recv.sequence + recv.getData().length);
             if(recv.sequence == desiredSeq.get(0)) {
-                desiredSeq.remove(0);
+                for(Integer i : desiredSeq){
+                    if(recv.sequence == i)
+                        desiredSeq.remove(i);
+                }
             }
             if(desiredSeq.size() > 1){
-                acknowledgment = desiredSeq.get(0);
+                acknowledgment = desiredSeq.get(0) + 1;
             }
 
             //Fast Retransmit in the case that the checksums do not match
