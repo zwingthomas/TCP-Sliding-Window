@@ -49,7 +49,8 @@ public class TCP_send extends Thread {
         t.scheduleAtFixedRate(
                 new TimerTask() {
                     public void run() {
-                        check_old_timestamps(inTransit, lock);
+                        if(inTransit.size() > 0)
+                            check_old_timestamps(inTransit, lock);
                     }
                 }
                 , 0, 1);

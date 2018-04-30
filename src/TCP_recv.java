@@ -25,23 +25,20 @@ public class TCP_recv {
     public void receive() throws IOException {
         int nextExpectedSeq = -1;
         int prevAck = -1;
+        int acknowledgment;
         byte[] buf = new byte[this.mtu];
         boolean running = true;
 
         HashMap<Integer, byte[]> dataBuf = new HashMap<>();
-        ArrayList<Integer> desiredSeq = new ArrayList<Integer>();
+        ArrayList<TCP_segm> history = new ArrayList<TCP_segm>();
+        TCP_segm prev = new TCP_segm(0, 0, 0, 0, (short) 0, null, "E");;
 
         //TODO: implement triple duplicate ACKS
         while (running) {
 
             TCP_segm recv = receiveData();  //receive the data
 
-            //Checking for out of order packets
-            int acknowledgment = recv.sequence + 1;
-            if(recv.sequence != nextExpectedSeq && nextExpectedSeq != -1){
-                desiredSeq.add(nextExpectedSeq);
-                acknowledgment = desiredSeq.get(0) + 1;
-            }
+            acknowledgment = recv.getSequence() + 1;
 
             //Fast Retransmit in the case that the checksums do not match
             short recvd_checksum = recv.getChecksum();
@@ -64,11 +61,7 @@ public class TCP_recv {
             }
 
             //TODO: manage TimeOut and SequenceNumber
-
             sendAck("A", 0, acknowledgment, recv.timeStamp);
-
-            nextExpectedSeq = acknowledgment + recv.getData().length - 1;
-            System.out.println("extExpectedSeq: " + nextExpectedSeq);
 
         }
         Writer wr = new FileWriter(fileName + "1");
