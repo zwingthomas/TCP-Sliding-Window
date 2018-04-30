@@ -230,8 +230,10 @@ public class TCP_send extends Thread {
         for(Integer seq_num : to_retransmit) {
             lock.lock();
             try {
-                inTransit.get(seq_num).setTimeStamp(System.nanoTime());
-                sendData(inTransit.get(seq_num));
+                if(inTransit.containsKey(seq_num)) {
+                    inTransit.get(seq_num).setTimeStamp(System.nanoTime());
+                    sendData(inTransit.get(seq_num));
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
