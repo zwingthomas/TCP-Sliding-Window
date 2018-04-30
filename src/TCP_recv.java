@@ -66,7 +66,7 @@ public class TCP_recv {
 
             sendAck("A", 0, acknowledgment + 1, recv.timeStamp);
             expectedNextSeq = recv.sequence + recv.getData().length;
-            prevAck = acknowledgment+1;
+            prevAck = acknowledgment;
         }
         Writer wr = new FileWriter(fileName + "1");
         //sort HashMap and print it out

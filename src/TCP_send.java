@@ -144,6 +144,9 @@ public class TCP_send extends Thread {
         ack = ack.deserialize(packet.getData());
         System.out.println("rcv " + System.nanoTime() / 1000000000 + " " + ack.getFlag() +
                 " " + ack.getSequence() + " " + ack.getData().length + " " + ack.getAcknowlegment());
+        synchronized(sequence_timeout_map) {
+            sequence_timeout_map.remove(ack.acknowledgment-1);
+        }
         //System.out.println("\t\t\t\t\t\tRTT in RECV" + (System.nanoTime() - ack.timeStamp));
         //System.out.println("Recving_______________");
         //System.out.println(ack.toString() + "\n");
