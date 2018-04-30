@@ -23,7 +23,7 @@ public class TCP_recv {
     }
 
     public void receive() throws IOException {
-        int expectedNextSeq = -1;
+        int nextExpectedSeq = -1;
         int prevAck = -1;
         byte[] buf = new byte[this.mtu];
         boolean running = true;
@@ -37,15 +37,9 @@ public class TCP_recv {
             TCP_segm recv = receiveData();  //receive the data
 
             //Checking for out of order packets
-            int acknowledgment = recv.sequence + 1;
-            desiredSeq.add(recv.sequence + recv.getData().length);
-            if(recv.sequence == desiredSeq.get(0)) {
-                for(Integer i : desiredSeq){
-                    if(recv.sequence == i)
-                        desiredSeq.remove(i);
-                }
-            }
-            if(desiredSeq.size() > 1){
+            Integer acknowledgment = recv.sequence + 1;
+            if(recv.sequence != nextExpectedSeq){
+                desiredSeq.add(nextExpectedSeq);
                 acknowledgment = desiredSeq.get(0) + 1;
             }
 
@@ -72,6 +66,8 @@ public class TCP_recv {
             //TODO: manage TimeOut and SequenceNumber
 
             sendAck("A", 0, acknowledgment, recv.timeStamp);
+
+            nextExpectedSeq = acknowledgment + recv.getData().length;
 
         }
         Writer wr = new FileWriter(fileName + "1");
