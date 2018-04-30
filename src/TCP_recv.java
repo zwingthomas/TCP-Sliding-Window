@@ -29,15 +29,21 @@ public class TCP_recv {
         boolean running = true;
 
         HashMap<Integer, byte[]> dataBuf = new HashMap<>();
+        ArrayList<Integer> desiredSeq = new ArrayList<Integer>();
 
         //TODO: implement triple duplicate ACKS
         while (running) {
+
             TCP_segm recv = receiveData();  //receive the data
 
             //Checking for out of order packets
-            int acknowledgment = recv.sequence;
-            if(recv.sequence != expectedNextSeq && expectedNextSeq != -1) {
-                acknowledgment = prevAck;
+            int acknowledgment = recv.sequence + 1;
+            desiredSeq.add(recv.sequence + recv.getData().length);
+            if(recv.sequence == desiredSeq.get(0)) {
+                desiredSeq.remove(0);
+            }
+            if(desiredSeq.size() > 1){
+                acknowledgment = desiredSeq.get(0);
             }
 
             //Fast Retransmit in the case that the checksums do not match
@@ -62,9 +68,8 @@ public class TCP_recv {
 
             //TODO: manage TimeOut and SequenceNumber
 
-            sendAck("A", 0, acknowledgment + 1, recv.timeStamp);
-            expectedNextSeq = recv.sequence + recv.getData().length;
-            prevAck = acknowledgment;
+            sendAck("A", 0, acknowledgment, recv.timeStamp);
+
         }
         Writer wr = new FileWriter(fileName + "1");
         //sort HashMap and print it out
