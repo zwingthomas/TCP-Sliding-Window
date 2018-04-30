@@ -86,7 +86,11 @@ public class TCP_send extends Thread {
         sendData.join();
     }
 
+    int initialSeqNum = 0;
+
     public void handshake(int initSeqNum) throws IOException {
+
+        initialSeqNum = initSeqNum;
 
         Thread receiveHandshake = new Thread(new Runnable() {
             @Override
@@ -96,7 +100,7 @@ public class TCP_send extends Thread {
                     TCP_segm ack = receiveAck();
 
                     //Send ACK
-                    sendNoData("A", initSeqNum + 1);
+                    sendNoData("A",  initialSeqNum + 1);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
