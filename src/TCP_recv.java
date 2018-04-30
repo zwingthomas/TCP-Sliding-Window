@@ -51,8 +51,6 @@ public class TCP_recv {
                 continue;
             }
 
-            System.out.println(recv.toString());
-
             if(recv.getFlag().contains("D")){
                 dataBuf.put(recv.sequence, recv.getData());
             }
@@ -100,9 +98,8 @@ public class TCP_recv {
         socket.receive(packet);
         TCP_segm recv = new TCP_segm(0, 0, 0, 0, (short) 0, empty, "E");
         recv = recv.deserialize(packet.getData());
-        System.out.println("RECV____________________");
-        System.out.println(recv.toString());
-        System.out.println();
+        System.out.println("rcv " + System.nanoTime() / 1000000000 + " " + recv.getFlag() +
+                " " + recv.getSequence() + " " + recv.getData().length + " " + recv.getAcknowlegment());
         if(recv.sequence == 0){
             this.senderPort = packet.getPort();
             this.senderIP = packet.getAddress();
@@ -118,9 +115,8 @@ public class TCP_recv {
         send.serialize();
         DatagramPacket packet = new DatagramPacket(send.serialize(), send.getLength() + 24, senderIP, senderPort);
         socket.send(packet);
-        System.out.println("SENT______________________");
-        System.out.println(send.toString());
-        System.out.println();
+        System.out.println("snd " + System.nanoTime() / 1000000000 + " " + send.getFlag() +
+                " " + send.getSequence() + " " + send.getData().length + " " + send.getAcknowlegment());
     }
 
 

@@ -114,7 +114,6 @@ public class TCP_send extends Thread {
         DatagramPacket packet = new DatagramPacket(segment.serialize(), 0, segment.getLength() + 24, this.remote_IP, this.remote_port);
         synchronized(sequence_timeout_map) {
             sequence_timeout_map.put(segment.sequence, this.timeout + System.nanoTime());
-            System.out.println(sequence_timeout_map.toString());
         }
         //System.out.println("Sending_______________");
         //System.out.println(segment.toString() + "\n");
@@ -155,20 +154,12 @@ public class TCP_send extends Thread {
             this.EDEV = 0L;
             this.timeout = 2L * this.ERTT;
         } else {
-            // System.out.println("computeTimeout________________");
             long SRTT = System.nanoTime() - timestamp;
-            // System.out.println("SRTT: " + SRTT);
-            // System.out.println("ERTT before: " + ERTT);
             long SDEV = Math.abs(SRTT - this.ERTT);
-            // System.out.println("SDEV: " + SDEV);
             this.ERTT = (long) (a * this.ERTT) + (long) ((1 - a) * SRTT);
-            // System.out.println("ERTT: " + this.ERTT);
             this.EDEV = (long) (b * this.EDEV) + (long) ((1 - b) * SDEV);
-            // System.out.println("EDEV: " + EDEV);
             this.timeout = this.ERTT + (4L * this.EDEV);
-            // System.out.println("timeout: " + this.timeout);
         }
-        // System.out.println("TIMEOUT TIME: " + this.timeout);
     }
 
     public void check_old_timestamps(HashMap<Integer, TCP_segm> inTransit, ReentrantLock lock) {
@@ -177,7 +168,6 @@ public class TCP_send extends Thread {
             for (Integer seq_num : sequence_timeout_map.keySet()) {
                 if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
                         System.out.println("TIMEOUT: " + seq_num);
-                        System.out.println("Segment: " + inTransit.get(seq_num).toString());
                         to_retransmit.add(seq_num);
                 }
             }
@@ -185,6 +175,7 @@ public class TCP_send extends Thread {
         for(Integer seq_num : to_retransmit) {
             lock.lock();
             try {
+                inTransit.get(seq_num).setTimeStamp(System.nanoTime());
                 sendData(inTransit.get(seq_num));
             } catch (IOException e) {
                 e.printStackTrace();
