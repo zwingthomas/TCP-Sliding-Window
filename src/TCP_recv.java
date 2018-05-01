@@ -81,14 +81,17 @@ public class TCP_recv {
         Thread receiveTeardown = new Thread(new Runnable() {
             @Override
             public void run() {
-
+                while(!teardown_recv) {
                     //Receive Ack
                     try {
                         TCP_segm ack = receiveData();
+                        if(ack.getFlag().contains("A"))
+                            teardown_recv = true;
                     } catch (IOException e1) {
                         e1.printStackTrace();
                     }
-                teardown_recv = true;
+                }
+
             }
         });
 
