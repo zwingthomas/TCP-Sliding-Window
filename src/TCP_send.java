@@ -237,27 +237,32 @@ public class TCP_send extends Thread {
     public void check_old_timestamps(HashMap<Integer, TCP_segm> inTransit, ReentrantLock lock) {
         ArrayList<Integer> to_retransmit = new ArrayList<>();
         synchronized(sequence_timeout_map) {
-            for (Integer seq_num : sequence_timeout_map.keySet()) {
-                try{
-                if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
-                    try{
-                    inTransit.get(seq_num).setTimeStamp(System.nanoTime());
-                        }catch(NullPointerException e){System.out.println("line 244");}
-                try {
-                        sendData(inTransit.get(seq_num));
-                    } catch (IOException e) {
-                        e.printStackTrace();
+            try {
+                for (Integer seq_num : sequence_timeout_map.keySet()) {
+                    try {
+                        if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
+                            try {
+                                inTransit.get(seq_num).setTimeStamp(System.nanoTime());
+                            } catch (NullPointerException e) {
+                                System.out.println("line 244");
+                            }
+                            try {
+                                sendData(inTransit.get(seq_num));
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            } catch (NullPointerException e) {
+                                System.out.println("Line 247");
+                            }
+                            packets_discarded += 1;
+                            retransmissions += 1;
+                        }
+                    } catch (NullPointerException a) {
+                        System.out.println("The if statement");
                     }
-                    catch(NullPointerException e){
-                        System.out.println("Line 247");
-                    }
-                    packets_discarded += 1;
-                    retransmissions += 1;
                 }
-                }
-                catch(NullPointerException a){
-                 System.out.println("The if statement");
-                }
+            }
+            catch(NullPointerException b){
+                System.out.println("The for loop!");
             }
         }
 //            for (Integer seq_num : to_retransmit) {
