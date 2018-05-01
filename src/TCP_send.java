@@ -135,23 +135,27 @@ public class TCP_send extends Thread {
         }
     }
 
+    boolean received_ack = false;
+
     public void connectionTeardown() throws IOException {
         Thread receiveTeardown = new Thread(new Runnable() {
             @Override
             public void run() {
                 try{
-                    TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, new byte[0], "E");
-                    TCP_segm finAck = new TCP_segm(0, 0, 0, 0, (short) 0, new byte[0], "E");
+                    long last_recv = System.nanoTime();
+                    while(last_recv + timeout > System.nanoTime()) {
+                        //Receive ACK
+                        receiveAck();
+                        received_ack = true;
+                        last_recv = System.nanoTime();
 
-                    //Receive ACK
-                    ack = receiveAck();
+                        //Receive FINACK
+                        TCP_segm finAck = receiveAck();
+                        last_recv = System.nanoTime();
 
-                    //Receive FINACK
-                    finAck = receiveAck();
-
-                    //Send ack
-                    sendNoData("A", finAck.sequence + 1);
-
+                        //Send ack
+                        sendNoData("A", finAck.sequence + 1);
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -162,7 +166,7 @@ public class TCP_send extends Thread {
         int retransmissions = 0;
         receiveTeardown.start();
 
-        while(!teardown_complete) {
+        while(!received_ack) {
             long time_sent = System.nanoTime();
             //Send FIN
             byte[] buf = file_name.getBytes();
@@ -173,9 +177,13 @@ public class TCP_send extends Thread {
                 System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
                 System.exit(0);
             }
-            while(time_sent + timeout > System.nanoTime() && !teardown_complete){
+            while(time_sent + timeout > System.nanoTime() && !received_ack){
                 //donothing
             }
+        }
+
+        while(!teardown_complete){
+            //donothing
         }
 
         end_prints();
