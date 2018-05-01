@@ -240,7 +240,7 @@ public class TCP_send extends Thread {
             try {
                 for (Integer seq_num : sequence_timeout_map.keySet()) {
                     try {
-                        if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
+                        if (inTransit.containsKey(seq_num) && sequence_timeout_map.get(seq_num) < System.nanoTime()) {
                             try {
                                 inTransit.get(seq_num).setTimeStamp(System.nanoTime());
                             } catch (NullPointerException e) {
