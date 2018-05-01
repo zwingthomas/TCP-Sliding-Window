@@ -14,9 +14,9 @@ public class TCP_send extends Thread {
     private char flag;
     private int sequenceSender;
 
-    HashMap<Integer, Integer> retransmitNum = new HashMap<>();
+    HashMap<Integer, Integer> retransmitNum;
     private Map<Integer, Long> sequence_timeout_map;
-    private HashMap<Integer, TCP_segm> inTransit = new HashMap<>();
+    private HashMap<Integer, TCP_segm> inTransit;
     ReentrantLock lock;
 
     //variables for timeOut calculation
@@ -47,6 +47,8 @@ public class TCP_send extends Thread {
         this.timeout = 5000000000L;
         this.sws = sws;
         this.file_name = file_name;
+        this.inTransit = new HashMap<Integer, TCP_segm>();
+        this.retransmitNum = new HashMap<Integer, Integer>();
     }
 
     public void send(ArrayList<TCP_segm> segmArr) throws InterruptedException {
@@ -244,7 +246,7 @@ public class TCP_send extends Thread {
         for(Integer seq_num : to_retransmit) {
             lock.lock();
             try {
-                if(inTransit.containsKey(seq_num)) {
+                if(inTransit.size() > 0 && inTransit.containsKey(seq_num)) {
                     inTransit.get(seq_num).setTimeStamp(System.nanoTime());
                     sendData(inTransit.get(seq_num));
                 }
