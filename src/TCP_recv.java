@@ -47,6 +47,15 @@ public class TCP_recv {
             }
             else if(recv.getFlag().contains("F")){
                 this.fileName = new String(recv.getData());
+                Writer wr = new FileWriter(fileName + "1");
+                //sort HashMap and print it out
+                Object[] keys = dataBuf.keySet().toArray();
+                Arrays.sort(keys);
+                for(Object key : keys){
+                    String str = new String(dataBuf.get(key));
+                    wr.write(str);
+                    wr.flush();
+                }
                 connectionTeardown(recv);
                 running = false;
                 break;
@@ -54,15 +63,6 @@ public class TCP_recv {
 
             sendAck("A", 0, acknowledgment, recv.timeStamp);
 
-        }
-        Writer wr = new FileWriter(fileName + "1");
-        //sort HashMap and print it out
-        Object[] keys = dataBuf.keySet().toArray();
-        Arrays.sort(keys);
-        for(Object key : keys){
-            String str = new String(dataBuf.get(key));
-            wr.write(str);
-            wr.flush();
         }
         System.exit(0);
     }
@@ -81,17 +81,13 @@ public class TCP_recv {
         Thread receiveTeardown = new Thread(new Runnable() {
             @Override
             public void run() {
-                try{
+
                     //Receive Ack
-                    long time_last_recv = System.nanoTime();
-                    TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, new byte[0], "E");
-                    while(!ack.getFlag().contains("A") && System.nanoTime() - time_last_recv < 5000000000L) {
-                        ack = receiveData();
-                        time_last_recv = System.nanoTime();
+                    try {
+                        TCP_segm ack = receiveData();
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
                 teardown_recv = true;
             }
         });

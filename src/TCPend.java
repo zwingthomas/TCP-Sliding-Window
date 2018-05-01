@@ -80,9 +80,9 @@ public class TCPend {
                     dataToBeSent[dataLoadedForSeg] = data[totalBytesLoaded];
                     totalBytesLoaded++;
                 }
-                seqNum += dataLoadedForSeg;
                 toSend.add(new TCP_segm(seqNum, 1, System.nanoTime(), dataLoadedForSeg, (short) 0, dataToBeSent, "D"));
                 toSend.get(segCnt).serialize(); //computes the checksum
+                seqNum += dataLoadedForSeg;
             }
 
             TCP_send sender = new TCP_send(socket, remote_IP, remote_port, sws, 'D', file_name);

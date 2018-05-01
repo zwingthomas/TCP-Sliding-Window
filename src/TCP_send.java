@@ -135,27 +135,23 @@ public class TCP_send extends Thread {
         }
     }
 
-    boolean received_ack = false;
 
     public void connectionTeardown() throws IOException {
+
+
         Thread receiveTeardown = new Thread(new Runnable() {
             @Override
             public void run() {
                 try{
-                    long last_recv = System.nanoTime();
-                    while(last_recv + timeout > System.nanoTime()) {
                         //Receive ACK
                         receiveAck();
-                        received_ack = true;
-                        last_recv = System.nanoTime();
 
                         //Receive FINACK
                         TCP_segm finAck = receiveAck();
-                        last_recv = System.nanoTime();
 
                         //Send ack
                         sendNoData("A", finAck.sequence + 1);
-                    }
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -166,7 +162,7 @@ public class TCP_send extends Thread {
         int retransmissions = 0;
         receiveTeardown.start();
 
-        while(!received_ack) {
+        while(!teardown_complete) {
             long time_sent = System.nanoTime();
             //Send FIN
             byte[] buf = file_name.getBytes();
@@ -177,12 +173,13 @@ public class TCP_send extends Thread {
                 System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
                 System.exit(0);
             }
-            while(time_sent + timeout > System.nanoTime() && !received_ack){
+            while(time_sent + timeout > System.nanoTime() && !teardown_complete){
                 //donothing
             }
         }
 
-        while(!teardown_complete){
+        long waitToPrint = System.nanoTime();
+        while(waitToPrint + timeout > System.nanoTime()){
             //donothing
         }
 
