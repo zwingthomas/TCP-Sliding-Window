@@ -163,7 +163,6 @@ public class TCP_send extends Thread {
         receiveTeardown.start();
 
         while(!teardown_complete) {
-            long time_sent = System.nanoTime();
             //Send FIN
             byte[] buf = file_name.getBytes();
             TCP_segm finalSeg = new TCP_segm(last_seqNum + buf.length, 0, System.nanoTime(), file_name.length(), (short) 0, buf, "F");
@@ -173,7 +172,8 @@ public class TCP_send extends Thread {
                 System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
                 System.exit(0);
             }
-            while(time_sent + timeout > System.nanoTime() && !teardown_complete){
+            long time_sent = System.nanoTime();
+            while(time_sent + 5000000000L > System.nanoTime() && !teardown_complete){
                 //donothing
             }
         }
