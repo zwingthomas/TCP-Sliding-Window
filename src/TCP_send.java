@@ -14,6 +14,7 @@ public class TCP_send extends Thread {
     private char flag;
     private int sequenceSender;
 
+    HashMap<Integer, Integer> retransmitNum;
     private Map<Integer, Long> sequence_timeout_map;
     private HashMap<Integer, TCP_segm> inTransit = new HashMap<>();
     ReentrantLock lock;
@@ -121,6 +122,11 @@ public class TCP_send extends Thread {
         while(!handshake_complete) {
             long time_sent = System.nanoTime();
             sendNoData("S", 0);
+            retransmissions++;
+            if(retransmissions > 16){
+                System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
+                System.exit(0);
+            }
             while(time_sent + timeout > System.nanoTime() && !handshake_complete){
                 //donothing
             }
@@ -147,6 +153,7 @@ public class TCP_send extends Thread {
             }
         });
 
+        int retransmissions = 0;
         receiveTeardown.start();
 
         while(!teardown_complete) {
@@ -155,6 +162,11 @@ public class TCP_send extends Thread {
             byte[] buf = file_name.getBytes();
             TCP_segm finalSeg = new TCP_segm(last_seqNum + buf.length, 0, System.nanoTime(), file_name.length(), (short) 0, buf, "F");
             sendData(finalSeg);
+            retransmissions++;
+            if(retransmissions > 16){
+                System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
+                System.exit(0);
+            }
             while(time_sent + timeout > System.nanoTime() && !teardown_complete){
                 //donothing
             }
@@ -273,8 +285,22 @@ class SendDataRunnable implements Runnable {
             try {
                 lock.lock();
                 if (inTransit.size() < sender.sws) {
+                    //keeps track of stats for final printout
                     sender.data += segmArr.get(segsSent).getData().length;
                     sender.packets_sent += 1;
+
+                    //retransmission counter
+                    int seqNum = segmArr.get(segsSent).sequence;
+                    if(sender.retransmitNum.containsKey(seqNum))
+                        sender.retransmitNum.put(seqNum, sender.retransmitNum.get(seqNum)+1);
+                    else
+                        sender.retransmitNum.put(seqNum, 1);
+                    if(sender.retransmitNum.get(seqNum) > 16){
+                        System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
+                        System.exit(0);
+                    }
+
+                    //sends data
                     segmArr.get(segsSent).setTimeStamp(System.nanoTime());
                     sender.sendData(segmArr.get(segsSent));
                     inTransit.put(segmArr.get(segsSent).sequence, segmArr.get(segsSent));
