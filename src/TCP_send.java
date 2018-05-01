@@ -14,7 +14,7 @@ public class TCP_send extends Thread {
     private char flag;
     private int sequenceSender;
 
-    HashMap<Integer, Integer> retransmitNum;
+    HashMap<Integer, Integer> retransmitNum = new HashMap<>();
     private Map<Integer, Long> sequence_timeout_map;
     private HashMap<Integer, TCP_segm> inTransit = new HashMap<>();
     ReentrantLock lock;
