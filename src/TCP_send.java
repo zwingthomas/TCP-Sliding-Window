@@ -144,12 +144,10 @@ public class TCP_send extends Thread {
                     TCP_segm finAck = new TCP_segm(0, 0, 0, 0, (short) 0, new byte[0], "E");
 
                     //Receive ACK
-                    while(!ack.getFlag().contains("A"))
-                        ack = receiveAck();
+                    ack = receiveAck();
 
                     //Receive FINACK
-                    while(!ack.getFlag().contains("A") || !ack.getFlag().contains("F"))
-                        finAck = receiveAck();
+                    finAck = receiveAck();
 
                     //Send ack
                     sendNoData("A", finAck.sequence + 1);

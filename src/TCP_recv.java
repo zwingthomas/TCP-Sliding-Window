@@ -85,7 +85,7 @@ public class TCP_recv {
                     //Receive Ack
                     long time_last_recv = System.nanoTime();
                     TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, new byte[0], "E");
-                    while(!ack.getFlag().contains("A") && System.nanoTime() - time_last_recv < 10000000000L) {
+                    while(!ack.getFlag().contains("A") && System.nanoTime() - time_last_recv < 5000000000L) {
                         ack = receiveData();
                         time_last_recv = System.nanoTime();
                     }
