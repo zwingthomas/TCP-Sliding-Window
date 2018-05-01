@@ -74,10 +74,44 @@ public class TCP_recv {
         receiveData();                                          //Receive ACK
     }
 
+    boolean teardown_recv = false;
+
     public void connectionTeardown(TCP_segm recv) throws IOException {
-        sendAck("A", 0, recv.sequence + 1, recv.timeStamp);       //Send ACK
-        sendAck("FA", 1,recv.sequence + 1, System.nanoTime()); //Send FIN + ACK
-        receiveData();                                          //Receive ACK
+
+        Thread receiveTeardown = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try{
+
+                    //Receive Ack
+                    TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, new byte[0], "E");
+                    while(!ack.getFlag().contains("A")) {
+                        ack = receiveData();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                teardown_recv = true;
+            }
+        });
+
+        int retransmissions = 0;
+        receiveTeardown.start();
+
+        while(!teardown_recv) {
+            long time_sent = System.nanoTime();
+            //Send ACK and FINACK
+            sendAck("A", 0, recv.sequence + 1, recv.timeStamp);       //Send ACK
+            sendAck("FA", 1,recv.sequence + 1, System.nanoTime()); //Send FIN + ACK
+            retransmissions++;
+            if(retransmissions > 16){
+                System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
+                System.exit(0);
+            }
+            while(time_sent + 5000000000L > System.nanoTime() && !teardown_recv){
+                //donothing
+            }
+        }
     }
 
     public TCP_segm receiveData() throws IOException {

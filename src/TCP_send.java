@@ -140,14 +140,18 @@ public class TCP_send extends Thread {
             @Override
             public void run() {
                 try{
-                    //Receive ACK
-                    TCP_segm ack = receiveAck();
+                    TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, new byte[0], "E");
+                    TCP_segm finAck = new TCP_segm(0, 0, 0, 0, (short) 0, new byte[0], "E");
+                    while(!ack.getFlag().contains("A") || !finAck.getFlag().contains("A")) {
+                        //Receive ACK
+                        ack = receiveAck();
 
-                    //Receive FINACK
-                    TCP_segm finAck = receiveAck();
+                        //Receive FINACK
+                        finAck = receiveAck();
 
-                    //Send ack
-                    sendNoData("A", finAck.sequence + 1);
+                        //Send ack
+                        sendNoData("A", finAck.sequence + 1);
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
