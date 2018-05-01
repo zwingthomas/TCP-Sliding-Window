@@ -29,7 +29,7 @@ public class TCP_send extends Thread {
     boolean teardown_complete = false;
     int last_seqNum = 0;
 
-    //variables for output
+    //variables for output:
     int data = 0;
     int packets_sent = 0;
     int packets_discarded = 0;
