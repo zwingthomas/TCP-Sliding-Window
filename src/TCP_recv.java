@@ -2,7 +2,6 @@ import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -131,7 +130,6 @@ public class TCP_recv {
         return recv;
     }
 
-    //TODO: send duplicate ACKS if packet is received out of sequence
     public void sendAck(String flag, int sequenceNum, int nextExpectedSeq, long prevTimeStamp) throws IOException {
         byte[] empty = new byte[0];
         TCP_segm send = new TCP_segm(sequenceNum, nextExpectedSeq, prevTimeStamp, 0, (short) 0, empty, flag);

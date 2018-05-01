@@ -86,7 +86,6 @@ public class TCPend {
             }
 
             TCP_send sender = new TCP_send(socket, remote_IP, remote_port, sws, 'D', file_name);
-            //TODO: watch out for dropped handshake packets
             sender.handshake(0);
             sender.send(toSend);
             sender.connectionTeardown();
