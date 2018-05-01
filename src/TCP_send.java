@@ -124,6 +124,7 @@ public class TCP_send extends Thread {
             sendNoData("S", 0);
             retransmissions++;
             if(retransmissions > 16){
+                connectionTeardown();
                 System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
                 System.exit(0);
             }
@@ -164,6 +165,7 @@ public class TCP_send extends Thread {
             sendData(finalSeg);
             retransmissions++;
             if(retransmissions > 16){
+                connectionTeardown();
                 System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
                 System.exit(0);
             }
@@ -296,6 +298,7 @@ class SendDataRunnable implements Runnable {
                     else
                         sender.retransmitNum.put(seqNum, 1);
                     if(sender.retransmitNum.get(seqNum) > 16){
+                        sender.connectionTeardown();
                         System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
                         System.exit(0);
                     }
