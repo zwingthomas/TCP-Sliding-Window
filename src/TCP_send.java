@@ -236,26 +236,35 @@ public class TCP_send extends Thread {
 
     public void check_old_timestamps(HashMap<Integer, TCP_segm> inTransit, ReentrantLock lock) {
         ArrayList<Integer> to_retransmit = new ArrayList<>();
-        try {
-            synchronized (sequence_timeout_map) {
+        synchronized(sequence_timeout_map) {
+            try {
                 for (Integer seq_num : sequence_timeout_map.keySet()) {
-                    if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
-                        try {
-                            inTransit.get(seq_num).setTimeStamp(System.nanoTime());
-                            sendData(inTransit.get(seq_num));
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                    try {
+                        if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
+                            try {
+                                inTransit.get(seq_num).setTimeStamp(System.nanoTime());
+                            } catch (NullPointerException e) {
+                                System.out.println("line 244");
+                            }
+                            try {
+                                sendData(inTransit.get(seq_num));
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            } catch (NullPointerException e) {
+                                System.out.println("Line 247");
+                            }
+                            packets_discarded += 1;
+                            retransmissions += 1;
                         }
-                        packets_discarded += 1;
-                        retransmissions += 1;
+                    } catch (NullPointerException a) {
+                        System.out.println("The if statement");
                     }
                 }
             }
+            catch(NullPointerException b){
+                System.out.println("The for loop!");
+            }
         }
-        catch(NullPointerException n) {
-            System.out.println("HERE I GUESS");
-        }
-
 //            for (Integer seq_num : to_retransmit) {
 //                lock.lock();
 //                try {
@@ -271,6 +280,7 @@ public class TCP_send extends Thread {
 //            }
 
     }
+
 
     public void end_prints(){
         System.out.println("\nAmount of Data Transferred/Received: " + data);
