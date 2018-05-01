@@ -235,26 +235,32 @@ public class TCP_send extends Thread {
         synchronized(sequence_timeout_map) {
             for (Integer seq_num : sequence_timeout_map.keySet()) {
                 if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
-                    if(seq_num != null)
-                        to_retransmit.add(seq_num);
+                    //if(seq_num != null)
+                     //   to_retransmit.add(seq_num);
+                    inTransit.get(seq_num).setTimeStamp(System.nanoTime());
+                    try {
+                        sendData(inTransit.get(seq_num));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     packets_discarded += 1;
                     retransmissions += 1;
                 }
             }
         }
-            for (Integer seq_num : to_retransmit) {
-                lock.lock();
-                try {
-                    if (inTransit.size() > 0 && inTransit.containsKey(seq_num)) {
-                        inTransit.get(seq_num).setTimeStamp(System.nanoTime());
-                        sendData(inTransit.get(seq_num));
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                inTransit.put(seq_num, inTransit.get(seq_num));
-                lock.unlock();
-            }
+//            for (Integer seq_num : to_retransmit) {
+//                lock.lock();
+//                try {
+//                    if (inTransit.size() > 0 && inTransit.containsKey(seq_num)) {
+//                        inTransit.get(seq_num).setTimeStamp(System.nanoTime());
+//                        sendData(inTransit.get(seq_num));
+//                    }
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//                inTransit.put(seq_num, inTransit.get(seq_num));
+//                lock.unlock();
+//            }
 
     }
 
