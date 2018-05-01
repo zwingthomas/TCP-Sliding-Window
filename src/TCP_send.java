@@ -238,17 +238,25 @@ public class TCP_send extends Thread {
         ArrayList<Integer> to_retransmit = new ArrayList<>();
         synchronized(sequence_timeout_map) {
             for (Integer seq_num : sequence_timeout_map.keySet()) {
+                try{
                 if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
-                    //if(seq_num != null)
-                     //   to_retransmit.add(seq_num);
+                    try{
                     inTransit.get(seq_num).setTimeStamp(System.nanoTime());
-                    try {
+                        }catch(NullPointerException e){System.out.println("line 244");}
+                try {
                         sendData(inTransit.get(seq_num));
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
+                    catch(NullPointerException e){
+                        System.out.println("Line 247");
+                    }
                     packets_discarded += 1;
                     retransmissions += 1;
+                }
+                }
+                catch(NullPointerException a){
+                 System.out.println("The if statement");
                 }
             }
         }
