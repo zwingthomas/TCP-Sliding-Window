@@ -142,16 +142,18 @@ public class TCP_send extends Thread {
                 try{
                     TCP_segm ack = new TCP_segm(0, 0, 0, 0, (short) 0, new byte[0], "E");
                     TCP_segm finAck = new TCP_segm(0, 0, 0, 0, (short) 0, new byte[0], "E");
-                    while(!ack.getFlag().contains("A") || !finAck.getFlag().contains("A")) {
-                        //Receive ACK
+
+                    //Receive ACK
+                    while(!ack.getFlag().contains("A"))
                         ack = receiveAck();
 
-                        //Receive FINACK
+                    //Receive FINACK
+                    while(!ack.getFlag().contains("A") || !ack.getFlag().contains("F"))
                         finAck = receiveAck();
 
-                        //Send ack
-                        sendNoData("A", finAck.sequence + 1);
-                    }
+                    //Send ack
+                    sendNoData("A", finAck.sequence + 1);
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -239,11 +241,7 @@ public class TCP_send extends Thread {
         synchronized(sequence_timeout_map) {
                 for (Integer seq_num : sequence_timeout_map.keySet()) {
                         if (inTransit.containsKey(seq_num) && sequence_timeout_map.get(seq_num) < System.nanoTime()) {
-                            try {
                                 inTransit.get(seq_num).setTimeStamp(System.nanoTime());
-                            } catch (NullPointerException e) {
-                                System.out.println("line 244");
-                            }
                             try {
                                 sendData(inTransit.get(seq_num));
                             } catch (IOException e) {
