@@ -126,7 +126,6 @@ public class TCP_send extends Thread {
             sendNoData("S", 0);
             retransmissions++;
             if(retransmissions > 16){
-                connectionTeardown();
                 System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
                 System.exit(0);
             }
@@ -167,7 +166,6 @@ public class TCP_send extends Thread {
             sendData(finalSeg);
             retransmissions++;
             if(retransmissions > 16){
-                connectionTeardown();
                 System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
                 System.exit(0);
             }
@@ -237,25 +235,26 @@ public class TCP_send extends Thread {
         synchronized(sequence_timeout_map) {
             for (Integer seq_num : sequence_timeout_map.keySet()) {
                 if (sequence_timeout_map.get(seq_num) < System.nanoTime()) {
-                    to_retransmit.add(seq_num);
+                    if(seq_num != null)
+                        to_retransmit.add(seq_num);
                     packets_discarded += 1;
                     retransmissions += 1;
                 }
             }
         }
-        for(Integer seq_num : to_retransmit) {
-            lock.lock();
-            try {
-                if(inTransit.size() > 0 && inTransit.containsKey(seq_num)) {
-                    inTransit.get(seq_num).setTimeStamp(System.nanoTime());
-                    sendData(inTransit.get(seq_num));
+            for (Integer seq_num : to_retransmit) {
+                lock.lock();
+                try {
+                    if (inTransit.size() > 0 && inTransit.containsKey(seq_num)) {
+                        inTransit.get(seq_num).setTimeStamp(System.nanoTime());
+                        sendData(inTransit.get(seq_num));
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
+                inTransit.put(seq_num, inTransit.get(seq_num));
+                lock.unlock();
             }
-            inTransit.put(seq_num, inTransit.get(seq_num));
-            lock.unlock();
-        }
 
     }
 
@@ -300,7 +299,6 @@ class SendDataRunnable implements Runnable {
                     else
                         sender.retransmitNum.put(seqNum, 1);
                     if(sender.retransmitNum.get(seqNum) > 16){
-                        sender.connectionTeardown();
                         System.out.println("Retransmission Error: Exceeded MAX Retransmissions");
                         System.exit(0);
                     }
